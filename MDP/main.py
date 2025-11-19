@@ -2,6 +2,10 @@ import numpy as np
 import pygame
 import random
 import copy
+import pprint
+
+from mpmath.libmp import to_str
+
 from environment import WallE, PygameInit
 
 
@@ -36,10 +40,6 @@ class MySolver(WallE):
 # -------------------------------- #
 # This function is needed to build the 'goal_table'
 def build_reward_map(env):
-    """
-       Build and return the goal-oriented reward_map (used to create goal_table).
-       A very simple and basic implementation
-    """
     grid_size = env._WallE__grid_size
     reward_map = [[-1 for _ in range(grid_size)] for _ in range(grid_size)]
     for r in range(env._WallE__grid_size):
@@ -50,6 +50,36 @@ def build_reward_map(env):
             else:
                 reward_map[r][c] = -1
     return reward_map
+
+
+def build_all_reward_map(thresholds, env):
+    reward_map_dic = {
+        "5" : [],
+        "10" : [],
+        "20" : [],
+        "30" : [],
+        "40" : []
+    }
+
+    for lim in thresholds:
+        grid_size = env._WallE__grid_size
+        reward_map = [[-1 for _ in range(grid_size)] for _ in range(grid_size)]
+        for r in range(env._WallE__grid_size):
+            for c in range(env._WallE__grid_size):
+                tile, val = env.grid[r][c]
+                if tile == "F":
+                    reward_map[r][c] = 400
+                elif tile == "E":
+                    reward_map[r][c] = -400
+                elif tile == "S":
+                    if lim < val:
+                        reward_map[r][c] = (lim * 250) // val
+                    else:
+                        reward_map[r][c] = 250
+                else:
+                    reward_map[r][c] = -1
+        reward_map_dic[str(lim)] = reward_map
+    return reward_map_dic
 
 # -------------------------------- #
 #     Implement your code here     #
@@ -74,6 +104,11 @@ if __name__ == "__main__":
     THRESHOLDS = [5, 10, 20, 30, 40]
     MAX_MOVES_PER_EPISODE = 100
 
+    reward_map_dic = build_all_reward_map(THRESHOLDS, env)
+
+
+
+
     # collect trash positions (fixed ordering) and values from the base grid
     trash_positions = env.get_trash_points()
 
@@ -86,6 +121,10 @@ if __name__ == "__main__":
 
     print("Building goal_table...")
     reward_map = build_reward_map(env)
+    reward_map_dic["goal"] = reward_map
+
+    pprint.pprint(reward_map_dic)
+
     goal_table = env.actions_model(reward_map)
     print("Finished building goal_table.")
 
