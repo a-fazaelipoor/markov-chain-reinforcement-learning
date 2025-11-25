@@ -40,13 +40,26 @@ This repository contains the second phase of the AI foundations course, focusing
 - Convergence monitoring with value difference metrics
 - Policy map visualization after training
 
+### 3. **Bonus: Deep Q Network (DQN)**
+**Objective**: Implement a Deep Q Network as an advanced reinforcement learning approach to handle the same environment using neural network function approximation instead of traditional Q-tables.
+
+**Key Components**:
+- **Agent**: WALL-E with power levels [5, 10]
+- **Neural Network**: Deep Q-network for Q-value approximation
+- **State Representation**: Enhanced state encoding for neural network input
+
+**Implementation Tasks**:
+- DQN architecture design and implementation
+- Performance comparison with tabular Q-learning
+
 ## Learning Objectives
 
 - **Markov Decision Processes**: Understand and implement Value Iteration for stochastic environments
 - **Policy Optimization**: Develop comprehensive policies considering multiple state factors
 - **Reinforcement Learning**: Apply Q-Learning in unknown environments with exploration-exploitation tradeoffs
+- **Deep Reinforcement Learning**: Implement DQN for complex state spaces and compare with traditional methods
 - **State Space Management**: Handle complex state representations beyond simple position
 - **Performance Evaluation**: Analyze algorithm convergence and agent performance across multiple environments
 - **Stochastic Environments**: Work with non-deterministic action outcomes and probabilistic transitions
 
-**Technologies**: Python, PyGame, NumPy
+**Technologies**: Python, PyGame, NumPy, PyTorch/TensorFlow (for DQN)
