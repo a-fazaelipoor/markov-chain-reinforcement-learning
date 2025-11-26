@@ -18,7 +18,6 @@ N_POWER_BINS = 4
 N_TRASH = 6
 
 SAVE_Q_PATH = "Q_simple.npy"
-PLOT_PATH = "reward_simple.png"
 
 SEED = 1111123
 FPS_TEST = 6
@@ -157,7 +156,6 @@ def plot_rewards(rewards, window=200):
     plt.ylabel("Reward (smoothed)")
     plt.grid(alpha=0.3)
     plt.title("Training curve (simple)")
-    plt.savefig(PLOT_PATH)
     plt.show()
 
 # ------------------ run ------------------
