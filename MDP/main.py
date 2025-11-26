@@ -9,22 +9,161 @@ from mpmath.libmp import to_str
 from environment import WallE, PygameInit
 
 
+
+def up_down_calc(move , value , move_prob , neigh_prob , grid_size , r , c):
+    if move == "up":
+        if r - 1 >= 0:
+            if c - 1 >= 0 and c + 1 <= grid_size - 1:
+                val = -1 + move_prob * value[r - 1][c] + neigh_prob * value[r][c - 1] + neigh_prob * value[r][c + 1]
+
+            elif c - 1 >= 0 and c + 1 > grid_size - 1:
+                val = -1 + move_prob * value[r - 1][c] + neigh_prob * value[r][c - 1]
+
+            elif c - 1 < 0 and c + 1 <= grid_size - 1:
+                val = -1 + move_prob * value[r - 1][c] + neigh_prob * value[r][c + 1]
+
+            else:
+                val = -1 + move_prob * value[r - 1][c]
+
+        else:
+            if c - 1 >= 0 and c + 1 <= grid_size - 1:
+                val = -1 + neigh_prob * value[r][c - 1] + neigh_prob * value[r][c + 1]
+
+            elif c - 1 >= 0 and c + 1 > grid_size - 1:
+                val = -1 + neigh_prob * value[r][c - 1]
+
+            elif c - 1 < 0 and c + 1 <= grid_size - 1:
+                val = -1 + neigh_prob * value[r][c + 1]
+
+    if move == "down":
+        if r + 1 <= grid_size - 1:
+            if c - 1 >= 0 and c + 1 <= grid_size - 1:
+                val = -1 + move_prob * value[r + 1][c] + neigh_prob * value[r][c - 1] + neigh_prob * value[r][c + 1]
+
+            elif c - 1 >= 0 and c + 1 > grid_size - 1:
+                val = -1 + move_prob * value[r + 1][c] + neigh_prob * value[r][c - 1]
+
+            elif c - 1 < 0 and c + 1 <= grid_size - 1:
+                val = -1 + move_prob * value[r + 1][c] + neigh_prob * value[r][c + 1]
+
+            else:
+                val = -1 + move_prob * value[r + 1][c]
+
+        else:
+            if c - 1 >= 0 and c + 1 <= grid_size - 1:
+                val = -1 + neigh_prob * value[r][c - 1] + neigh_prob * value[r][c + 1]
+
+            elif c - 1 >= 0 and c + 1 > grid_size - 1:
+                val = -1 + neigh_prob * value[r][c - 1]
+
+            elif c - 1 < 0 and c + 1 <= grid_size - 1:
+                val = -1 + neigh_prob * value[r][c + 1]
+
+    return val
+
+
+def left_right_calc(move , value , move_prob , neigh_prob , grid_size , r , c):
+    if move == "left":
+        if c - 1 >= 0:  # LEFT ممکن است
+            if r - 1 >= 0 and r + 1 <= grid_size - 1:
+                val = -1 + move_prob * value[r][c - 1] + neigh_prob * value[r - 1][c] + neigh_prob * value[r + 1][c]
+
+            elif r - 1 >= 0 and r + 1 > grid_size - 1:
+                val = -1 + move_prob * value[r][c - 1] + neigh_prob * value[r - 1][c]
+
+            elif r - 1 < 0 and r + 1 <= grid_size - 1:
+                val = -1 + move_prob * value[r][c - 1] + neigh_prob * value[r + 1][c]
+
+            else:
+                val = -1 + move_prob * value[r][c - 1]
+
+        else:  # LEFT غیرممکن است
+            if r - 1 >= 0 and r + 1 <= grid_size - 1:
+                val = -1 + neigh_prob * value[r - 1][c] + neigh_prob * value[r + 1][c]
+
+            elif r - 1 >= 0 and r + 1 > grid_size - 1:
+                val = -1 + neigh_prob * value[r - 1][c]
+
+            elif r - 1 < 0 and r + 1 <= grid_size - 1:
+                val = -1 + neigh_prob * value[r + 1][c]
+
+        if move == "right":
+            if c + 1 <= grid_size - 1:
+                if r - 1 >= 0 and r + 1 <= grid_size - 1:
+                    val = -1 + move_prob * value[r][c + 1] + neigh_prob * value[r - 1][c] + neigh_prob * value[r + 1][c]
+
+                elif r - 1 >= 0 and r + 1 > grid_size - 1:
+                    val = -1 + move_prob * value[r][c + 1] + neigh_prob * value[r - 1][c]
+
+                elif r - 1 < 0 and r + 1 <= grid_size - 1:
+                    val = -1 + move_prob * value[r][c + 1] + neigh_prob * value[r + 1][c]
+
+                else:
+                    val = -1 + move_prob * value[r][c + 1]
+
+            else:  # RIGHT غیرممکن است
+                if r - 1 >= 0 and r + 1 <= grid_size - 1:
+                    val = -1 + neigh_prob * value[r - 1][c] + neigh_prob * value[r + 1][c]
+
+                elif r - 1 >= 0 and r + 1 > grid_size - 1:
+                    val = -1 + neigh_prob * value[r - 1][c]
+
+                elif r - 1 < 0 and r + 1 <= grid_size - 1:
+                    val = -1 + neigh_prob * value[r + 1][c]
+
+        return val
+
+
 # -------------------------------- #
 #     Implement your code here     #
 # -------------------------------- #
 class MySolver(WallE):
     def actions_model(self, reward_map):
-        """
-        Implement your MDP solver (e.g., Value Iteration) here.
-        This function receives a reward_map and must return an 8x8 policy table.
+        transition = self._WallE__probability_dict
+        for key, value in reward_map.items():
+            grid_size = self._WallE__grid_size
+            v_table = [[-1 for _ in range(grid_size)] for _ in range(grid_size)]
+            for r in range(grid_size):
+                for c in range(grid_size):
+                    v_table[r][c] = 0
 
-        HINT: Access private members from the WallE base class using their "mangled" names:
-              - self._WallE__grid_size
-              - self._WallE__probability_dict
-              - self._WallE__calculate_transition_model(...)
-        """
 
-        # Placeholder (remove this):
+            for r in range(grid_size):
+                for c in range(grid_size):
+                    p =transition[(r,c)]
+
+                    up = p[0]
+                    down = p[1]
+                    left = p[2]
+                    right = p[3]
+
+                    up_up = up["intended"]
+                    up_neighbors = up["neighbor"]
+
+                    down_down = down["intended"]
+                    down_neighbors = down["neighbor"]
+
+                    left_left = left["intended"]
+                    left_neighbors = left["neighbor"]
+
+                    right_right = right["intended"]
+                    right_neighbors = right["neighbor"]
+
+                    up_val = up_down_calc("up" , value , up_up , up_neighbors , grid_size, r, c)
+                    down_val = up_down_calc("down" , value , up_up , up_neighbors , grid_size, r, c)
+                    left_val = left_right_calc("left" , value , up_up , up_neighbors , grid_size, r, c)
+                    left_val = left_right_calc("right" , value , up_up , up_neighbors , grid_size, r, c)
+
+
+
+
+
+
+
+
+
+
+
         grid_size = self._WallE__grid_size
         actions_taken = np.full((grid_size, grid_size), -1, dtype=np.int8)
         for x in range(grid_size):
@@ -48,7 +187,7 @@ def build_reward_map(env):
             if tile == 'F':
                 reward_map[r][c] = +1000
             else:
-                reward_map[r][c] = -1
+                reward_map[r][c] = 0
     return reward_map
 
 
@@ -77,7 +216,7 @@ def build_all_reward_map(thresholds, env):
                     else:
                         reward_map[r][c] = 250
                 else:
-                    reward_map[r][c] = -1
+                    reward_map[r][c] = 0
         reward_map_dic[str(lim)] = reward_map
     return reward_map_dic
 
@@ -99,12 +238,13 @@ if __name__ == "__main__":
     env = MySolver()
     state = env.reset()
 
+
     # --- parameters for precomputed table scheme ---
     # don't change these in your final code
     THRESHOLDS = [5, 10, 20, 30, 40]
     MAX_MOVES_PER_EPISODE = 100
 
-    reward_map_dic = build_all_reward_map(THRESHOLDS, env)
+    reward_map_dic_without_goal_reward_map = build_all_reward_map(THRESHOLDS, env)
 
 
 
@@ -121,9 +261,9 @@ if __name__ == "__main__":
 
     print("Building goal_table...")
     reward_map = build_reward_map(env)
-    reward_map_dic["goal"] = reward_map
+    reward_map_dic_without_goal_reward_map["goal"] = reward_map
 
-    pprint.pprint(reward_map_dic)
+    reward_map = reward_map_dic_without_goal_reward_map
 
     goal_table = env.actions_model(reward_map)
     print("Finished building goal_table.")
