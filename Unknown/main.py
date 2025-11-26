@@ -172,38 +172,22 @@ def plot_value_diff(q_diff, window=200):
     plt.grid(alpha=0.3)
     plt.title("value_Difference")
     plt.show()
-def plot_policy_map(Q, grid_w, n_trash, power_bin=3, n_power_bins=N_POWER_BINS):
-    """
-    یک نقشه پالیسی برای یک power-bin مشخص رسم می‌کند.
-    power_bin: شماره بین 0 تا n_power_bins-1
-    """
-    if not (0 <= power_bin < n_power_bins):
-        raise ValueError(f"power_bin باید بین 0 و {n_power_bins-1} باشد.")
-
-    # زباله‌ها رو فعلا همه False می‌گیریم (هیچ زباله‌ای جمع نشده)
+def plot_policy_map(Q, grid_w, n_trash, power_bin=2, n_power_bins=N_POWER_BINS):
     trash = [False] * n_trash
 
     policy = np.zeros((grid_w, grid_w), dtype=np.int32)
 
     for r in range(grid_w):
         for c in range(grid_w):
-            # چون در state_to_id از power // 8 استفاده کردی،
-            # برای bin=1 یک power نماینده مثل 8 کاملاً اوکی است.
             power = power_bin * 8
             s = state_to_id((r, c), power, trash, grid_w, n_trash, n_power_bins)
             best_a = int(np.argmax(Q[s]))
             policy[r, c] = best_a
 
-    # حالا از روی اکشن‌ها فلش بکشیم (quiver)
     X, Y = np.meshgrid(np.arange(grid_w), np.arange(grid_w))
-    U = np.zeros_like(policy, dtype=float)  # مولفه افقی فلش
-    V = np.zeros_like(policy, dtype=float)  # مولفه عمودی فلش
+    U = np.zeros_like(policy, dtype=float)
+    V = np.zeros_like(policy, dtype=float)
 
-    # اکشن‌ها طبق environment.py:
-    # 0: (-1, 0) -> بالا
-    # 1: ( 1, 0) -> پایین
-    # 2: ( 0,-1) -> چپ
-    # 3: ( 0, 1) -> راست
     for r in range(grid_w):
         for c in range(grid_w):
             a = policy[r, c]
@@ -223,7 +207,7 @@ def plot_policy_map(Q, grid_w, n_trash, power_bin=3, n_power_bins=N_POWER_BINS):
     plt.figure()
     plt.quiver(X, Y, U, V, pivot="middle", scale=1, scale_units="xy")
     plt.gca().set_aspect("equal", adjustable="box")
-    plt.gca().invert_yaxis()   # چون اندیس سطرها از بالا به پایین زیاد می‌شه
+    plt.gca().invert_yaxis()
     plt.xticks(range(grid_w))
     plt.yticks(range(grid_w))
     plt.grid(alpha=0.3)
