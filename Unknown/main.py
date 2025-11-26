@@ -1,116 +1,169 @@
 import numpy as np
 import pygame
+import random
 import matplotlib.pyplot as plt
-from environment import WallE_RL, PygameInit, ACTIONS, TRASH_VALUES
+from environment import WallE_RL, PygameInit, ACTIONS
 
-q_table = {}
-ALPHA = 0.7
-GAMMA = 0.98
+TOTAL_EPISODES = 300_000
+MAX_STEPS = 200
+ALPHA = 0.1
+GAMMA = 0.99
+
 EPSILON_START = 1.0
-EPSILON_END = 0.1
-TOTAL_EPISODES = 100000
+EPSILON_END = 0.05
+EPSILON_DECAY_LINEAR = True # اگر False => exponential
 
-episode_rewards = []
+GRID_FALLBACK = 8
+N_POWER_BINS = 4
+N_TRASH = 6
+
+SAVE_Q_PATH = "Q_simple.npy"
+PLOT_PATH = "reward_simple.png"
+
+SEED = 1111123
+FPS_TEST = 6
+VERBOSE = True
+# ------------------------------------------------------
+
+random.seed(SEED)
+np.random.seed(SEED)
+
+# ------------------ utility (state id) ------------------
 
 
-def get_state_key(pos, power, trash_state):
+def get_trash_list():
+    return [False] * N_TRASH
+
+def trash_to_mask(trash_list):
+    m = 0
+    for i, b in enumerate(trash_list):
+        if b:
+            m |= (1 << i)
+    return m
+
+def state_to_id(pos, power, trash_list, grid_w, n_trash, n_power_bins=N_POWER_BINS):
     r, c = pos
-    power_bin = min(power // 8, 3)
-    trash_bits = tuple(int(x) for x in trash_state)
-    return (r, c, power_bin, trash_bits)
+    pos_idx = r * grid_w + c
+    power_idx = min(power // 8, n_power_bins - 1)
+    mask = trash_to_mask(trash_list)
+    return ((pos_idx * n_power_bins) + power_idx) * (2 ** n_trash) + mask
 
+# ------------------ main simple training ------------------
+def simple_train(env, episodes=TOTAL_EPISODES, max_steps=MAX_STEPS,
+                 alpha=ALPHA, gamma=GAMMA,
+                 eps_start=EPSILON_START, eps_end=EPSILON_END,
+                 linear_decay=EPSILON_DECAY_LINEAR):
 
-def choose_action(state, epsilon):
-    if np.random.rand() < epsilon:
-        return np.random.randint(4)
-    if state not in q_table:
-        q_table[state] = np.zeros(4)
-    return int(np.argmax(q_table[state]))
+    rng = random.Random()
+    grid_w, n_trash = GRID_FALLBACK , N_TRASH
+    n_states = ((grid_w * grid_w) * N_POWER_BINS) * (2 ** n_trash)
+    n_actions = len(ACTIONS)
+    Q = np.zeros((n_states, n_actions), dtype=np.float32)
 
+    rewards = []
 
-if __name__ == "__main__":
-    env = WallE_RL()
-    screen, clock = PygameInit.initialization()
-
-    print("Starting final high-performance training (100k episodes)")
-
-    for ep in range(TOTAL_EPISODES):
+    for ep in range(1, episodes + 1):
         pos, power = env.reset()
-        trash = states = [False for _ in range(6)]
-        state = get_state_key(pos, power, trash)
-        total = 0
+        trash = get_trash_list()
+        s = state_to_id(pos, power, trash, grid_w, n_trash)
+        total = 0.0
+        # compute epsilon
+        if linear_decay:
+            eps = max(eps_end, eps_start - (ep - 1) * (eps_start - eps_end) / max(1, episodes - 1))
+        else:
+            # exponential
+            decay = (eps_end / eps_start) ** (1 / max(1, episodes))
+            eps = max(eps_end, eps_start * (decay ** ep))
 
-        epsilon = max(EPSILON_END, EPSILON_START - (EPSILON_START - EPSILON_END) * (ep / TOTAL_EPISODES))
+        for step in range(max_steps):
+            # epsilon-greedy
+            if rng.random() < eps:
+                a = rng.choice(ACTIONS)
+            else:
+                a = int(np.argmax(Q[s]))
+
+            next_pos, reward, next_trash, done, next_power = env.step(a)
+            s2 = state_to_id(next_pos, next_power, next_trash, grid_w, n_trash)
+
+            # Q update (classic)
+            next_max = 0.0 if done else np.max(Q[s2])
+            Q[s, a] += alpha * (reward + gamma * next_max - Q[s, a])
+
+            s = s2
+            total += reward
+
+            if done:
+                break
+
+        rewards.append(total)
+
+        if VERBOSE and ep % max(1, episodes // 10) == 0:
+            recent = np.mean(rewards[-100:]) if len(rewards) >= 1 else 0.0
+            print(f"[Ep {ep}/{episodes}] eps={eps:.3f} total={total:.1f} recent100={recent:.1f}")
+
+    # save Q
+    try:
+        np.save(SAVE_Q_PATH, Q)
+        if VERBOSE: print("Saved Q to", SAVE_Q_PATH)
+    except Exception as e:
+        print("Save Q failed:", e)
+
+    return Q, rewards, (grid_w, n_trash)
+
+# ------------------ simple visual test ------------------
+def simple_test(env, Q, grid_w, n_trash, episodes=5, fps=FPS_TEST):
+    screen, clock = PygameInit.initialization()
+    results = []
+    for ep in range(episodes):
+        pos, power = env.reset()
+        trash = get_trash_list()
+        s = state_to_id(pos, power, trash, grid_w, n_trash)
+        total = 0.0
         done = False
         steps = 0
-
-        while not done and steps < 200:
-            action = choose_action(state, epsilon)
-            next_pos, reward, next_trash, done, next_power = env.step(action)
-            next_state = get_state_key(next_pos, next_power, next_trash)
-
-            if state not in q_table:
-                q_table[state] = np.zeros(4)
-            if next_state not in q_table:
-                q_table[next_state] = np.zeros(4)
-
-            q_table[state][action] += ALPHA * (reward + GAMMA * np.max(q_table[next_state]) - q_table[state][action])
-
-            state = next_state
-            total += reward
-            steps += 1
-
-        episode_rewards.append(total)
-
-        if (ep + 1) % 10000 == 0:
-            recent_avg = np.mean(episode_rewards[-50:])
-            print(f"Episode {ep + 1:5d} | Recent Avg Reward: {recent_avg:6.1f}")
-
-    print("\n" + "=" * 60)
-    print("5 FINAL TEST EPISODES (epsilon = 0.08 for robustness)")
-    print("=" * 60)
-
-    test_rewards = []
-    for i in range(5):
-        pos, power = env.reset()
-        trash = env._WallE_RL__get_trash_state()
-        state = get_state_key(pos, power, trash)
-        total = 0
-        done = False
+        power_before = 5
 
         while not done:
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    pygame.quit()
-                    exit()
+            a = int(np.argmax(Q[s]))  # greedy
+            pos, reward, trash, done, power = env.step(a)
+            s = state_to_id(pos, power, trash, grid_w, n_trash)
 
-            action = choose_action(state, 0.0)  # small exploration in test
+            if power_before != power:
+                print(power)
+                power_before = power
 
-            pos, reward, trash, done, power = env.step(action)
-            state = get_state_key(pos, power, trash)
             total += reward
-
+            steps += 1
             env.render(screen)
             pygame.display.flip()
-            clock.tick(10)
+            clock.tick(fps)
+            for ev in pygame.event.get():
+                if ev.type == pygame.QUIT:
+                    pygame.quit()
+                    return results
+        print(f"[TEST] ep{ep+1}:reward={total:.1f} steps={steps} done={done}")
+        results.append((total, steps, done))
+    pygame.quit()
+    return results
 
-        print(f"Test {i + 1}/5 → Reward: {total:.1f}")
-        test_rewards.append(total)
-
-    avg_test = np.mean(test_rewards)
-    print(f"\nFinal Test Average: {avg_test:.1f}")
-    print("Goal of 1500+ reliably achieved!" if avg_test >= 1500 else "Very close – rerun for luck!")
-
-    plt.figure(figsize=(12, 5))
-    smoothed = np.convolve(episode_rewards, np.ones(2000) / 2000, mode='valid')
-    plt.plot(smoothed, color='limegreen', linewidth=2)
-    plt.axhline(y=1500, color='red', linestyle='--', label='Target 1500')
-    plt.title("Wall-E Q-Learning – Training Reward Curve")
+# ------------------ plotting ------------------
+def plot_rewards(rewards, window=200):
+    if len(rewards) < window:
+        plt.plot(rewards)
+    else:
+        sm = np.convolve(rewards, np.ones(window)/window, mode='valid')
+        plt.plot(sm)
     plt.xlabel("Episode")
-    plt.ylabel("Reward")
-    plt.legend()
+    plt.ylabel("Reward (smoothed)")
     plt.grid(alpha=0.3)
+    plt.title("Training curve (simple)")
+    plt.savefig(PLOT_PATH)
     plt.show()
 
-    input("\nPress Enter to exit...")
-    pygame.quit()
+# ------------------ run ------------------
+if __name__ == "__main__":
+    env = WallE_RL()
+    Q, rewards, (grid_w, n_trash) = simple_train(env, episodes=TOTAL_EPISODES)
+    plot_rewards(rewards)
+    print("Starting visual tests...")
+    simple_test(env, Q, grid_w, n_trash, episodes=5)
