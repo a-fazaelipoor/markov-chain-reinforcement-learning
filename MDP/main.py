@@ -64,7 +64,7 @@ def up_down_calc(move , value , move_prob , neigh_prob , grid_size , r , c):
 
 def left_right_calc(move , value , move_prob , neigh_prob , grid_size , r , c):
     if move == "left":
-        if c - 1 >= 0:  # LEFT ممکن است
+        if c - 1 >= 0:
             if r - 1 >= 0 and r + 1 <= grid_size - 1:
                 val = -1 + move_prob * value[r][c - 1] + neigh_prob * value[r - 1][c] + neigh_prob * value[r + 1][c]
 
@@ -77,7 +77,7 @@ def left_right_calc(move , value , move_prob , neigh_prob , grid_size , r , c):
             else:
                 val = -1 + move_prob * value[r][c - 1]
 
-        else:  # LEFT غیرممکن است
+        else:
             if r - 1 >= 0 and r + 1 <= grid_size - 1:
                 val = -1 + neigh_prob * value[r - 1][c] + neigh_prob * value[r + 1][c]
 
@@ -87,31 +87,31 @@ def left_right_calc(move , value , move_prob , neigh_prob , grid_size , r , c):
             elif r - 1 < 0 and r + 1 <= grid_size - 1:
                 val = -1 + neigh_prob * value[r + 1][c]
 
-        if move == "right":
-            if c + 1 <= grid_size - 1:
-                if r - 1 >= 0 and r + 1 <= grid_size - 1:
-                    val = -1 + move_prob * value[r][c + 1] + neigh_prob * value[r - 1][c] + neigh_prob * value[r + 1][c]
+    if move == "right":
+        if c + 1 <= grid_size - 1:
+            if r - 1 >= 0 and r + 1 <= grid_size - 1:
+                val = -1 + move_prob * value[r][c + 1] + neigh_prob * value[r - 1][c] + neigh_prob * value[r + 1][c]
 
-                elif r - 1 >= 0 and r + 1 > grid_size - 1:
-                    val = -1 + move_prob * value[r][c + 1] + neigh_prob * value[r - 1][c]
+            elif r - 1 >= 0 and r + 1 > grid_size - 1:
+                val = -1 + move_prob * value[r][c + 1] + neigh_prob * value[r - 1][c]
 
-                elif r - 1 < 0 and r + 1 <= grid_size - 1:
-                    val = -1 + move_prob * value[r][c + 1] + neigh_prob * value[r + 1][c]
+            elif r - 1 < 0 and r + 1 <= grid_size - 1:
+                val = -1 + move_prob * value[r][c + 1] + neigh_prob * value[r + 1][c]
 
-                else:
-                    val = -1 + move_prob * value[r][c + 1]
+            else:
+                val = -1 + move_prob * value[r][c + 1]
 
-            else:  # RIGHT غیرممکن است
-                if r - 1 >= 0 and r + 1 <= grid_size - 1:
-                    val = -1 + neigh_prob * value[r - 1][c] + neigh_prob * value[r + 1][c]
+        else:
+            if r - 1 >= 0 and r + 1 <= grid_size - 1:
+                val = -1 + neigh_prob * value[r - 1][c] + neigh_prob * value[r + 1][c]
 
-                elif r - 1 >= 0 and r + 1 > grid_size - 1:
-                    val = -1 + neigh_prob * value[r - 1][c]
+            elif r - 1 >= 0 and r + 1 > grid_size - 1:
+                val = -1 + neigh_prob * value[r - 1][c]
 
-                elif r - 1 < 0 and r + 1 <= grid_size - 1:
-                    val = -1 + neigh_prob * value[r + 1][c]
+            elif r - 1 < 0 and r + 1 <= grid_size - 1:
+                val = -1 + neigh_prob * value[r + 1][c]
 
-        return val
+    return val
 
 
 # -------------------------------- #
@@ -119,59 +119,63 @@ def left_right_calc(move , value , move_prob , neigh_prob , grid_size , r , c):
 # -------------------------------- #
 class MySolver(WallE):
     def actions_model(self, reward_map):
+        policy_dictionary = {}
         transition = self._WallE__probability_dict
         for key, value in reward_map.items():
             grid_size = self._WallE__grid_size
             v_table = [[-1 for _ in range(grid_size)] for _ in range(grid_size)]
+            policy = [[" " for _ in range(grid_size)] for _ in range(grid_size)]
             for r in range(grid_size):
                 for c in range(grid_size):
                     v_table[r][c] = 0
 
+            max_iteration = 500
+            epsilon = 1e-4
 
-            for r in range(grid_size):
-                for c in range(grid_size):
-                    p =transition[(r,c)]
+            for iteration in range(max_iteration):
+                v_new = [[0 for _ in range(grid_size)] for _ in range(grid_size)]
+                delta = 0
+                for r in range(grid_size):
+                    for c in range(grid_size):
+                        p =transition[(r,c)]
 
-                    up = p[0]
-                    down = p[1]
-                    left = p[2]
-                    right = p[3]
+                        up = p[0]
+                        down = p[1]
+                        left = p[2]
+                        right = p[3]
 
-                    up_up = up["intended"]
-                    up_neighbors = up["neighbor"]
+                        up_val = up_down_calc("up" , value , up["intended"] , up["neighbor"] , grid_size, r, c)
+                        down_val = up_down_calc("down" , value , down["intended"],  down["neighbor"] , grid_size, r, c)
+                        left_val = left_right_calc("left" , value ,left["intended"], left["neighbor"] , grid_size, r, c)
+                        right_val = left_right_calc("right" , value , right["intended"] , right["neighbor"] , grid_size, r, c)
 
-                    down_down = down["intended"]
-                    down_neighbors = down["neighbor"]
+                        if max(up_val , down_val , left_val , right_val) == up_val :
+                            v_new[r][c] = up_val
+                            policy[r][c] = 0
 
-                    left_left = left["intended"]
-                    left_neighbors = left["neighbor"]
+                        if max(up_val , down_val , left_val , right_val) == left_val :
+                            v_new[r][c] = left_val
+                            policy[r][c] = 2
 
-                    right_right = right["intended"]
-                    right_neighbors = right["neighbor"]
+                        if max(up_val , down_val , left_val , right_val) == down_val :
+                            v_new[r][c] = down_val
+                            policy[r][c] = 1
 
-                    up_val = up_down_calc("up" , value , up_up , up_neighbors , grid_size, r, c)
-                    down_val = up_down_calc("down" , value , up_up , up_neighbors , grid_size, r, c)
-                    left_val = left_right_calc("left" , value , up_up , up_neighbors , grid_size, r, c)
-                    left_val = left_right_calc("right" , value , up_up , up_neighbors , grid_size, r, c)
+                        if max(up_val , down_val , left_val , right_val) == right_val :
+                            v_new[r][c] = right_val
+                            policy[r][c] = 3
+
+                        delta = max(delta, abs(v_new[r][c] - v_table[r][c]))
+
+                v_table = v_new
+                if delta < epsilon:
+                    break
+
+            policy_dictionary[key] = policy
+            
+        return policy_dictionary
 
 
-
-
-
-
-
-
-
-
-
-        grid_size = self._WallE__grid_size
-        actions_taken = np.full((grid_size, grid_size), -1, dtype=np.int8)
-        for x in range(grid_size):
-            for y in range(grid_size):
-                if self.grid[x][y][0] == 'B':
-                    continue
-                actions_taken[x, y] = random.choice([0, 1, 2, 3])
-        return actions_taken
 
 
 # -------------------------------- #
@@ -265,9 +269,10 @@ if __name__ == "__main__":
 
     reward_map = reward_map_dic_without_goal_reward_map
 
-    goal_table = env.actions_model(reward_map)
-    print("Finished building goal_table.")
+    policy_dictionary = env.actions_model(reward_map)
 
+    print("Finished building goal_table.")
+    print(policy_dictionary)
     # ---------------------------#
 
     screen, clock = PygameInit.initialization()
@@ -291,7 +296,7 @@ if __name__ == "__main__":
             # --- Policy Selection ---
             # This is a simple implementation that ALWAYS uses the goal_table.
             # You MUST modify this section to implement the full logic
-            action_table = goal_table
+            action_table = policy_dictionary
             # ------------------------
 
             moves += 1
