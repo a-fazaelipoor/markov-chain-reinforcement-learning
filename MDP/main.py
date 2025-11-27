@@ -172,7 +172,7 @@ class MySolver(WallE):
                     break
 
             policy_dictionary[key] = policy
-            
+
         return policy_dictionary
 
 
@@ -294,15 +294,27 @@ if __name__ == "__main__":
             env.render(screen)
 
             # --- Policy Selection ---
-            # This is a simple implementation that ALWAYS uses the goal_table.
-            # You MUST modify this section to implement the full logic
-            action_table = policy_dictionary
+            if env.agent_value == 5:
+                action_table = policy_dictionary['5']
+
+            elif env.agent_value == 10:
+                action_table = policy_dictionary['10']
+
+            elif env.agent_value == 20:
+                action_table = policy_dictionary['20']
+
+            elif env.agent_value == 30:
+                action_table = policy_dictionary['30']
+
+            else:
+                action_table = policy_dictionary['40']
+
             # ------------------------
 
             moves += 1
-
-            # Get action from the selected policy
-            action = action_table[state]
+            r, c = state
+  
+            action = action_table[r][c]
 
             next_state, probability, reward_episode, done = env.step(action, THRESHOLDS)
             state = next_state
