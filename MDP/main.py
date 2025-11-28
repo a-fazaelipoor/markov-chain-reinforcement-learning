@@ -289,29 +289,45 @@ if __name__ == "__main__":
 
         while running:
 
+
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     running = False
 
             env.render(screen)
+            trash_positions = env.get_trash_points()
+
+            useful_trash_exists = False
+            agent_current_power = env.agent_value
+
+            for (tr, tc) in trash_positions:
+                cell_data = env.grid[tr][tc]
+                trash_value = cell_data[1]
+
+                if agent_current_power >= trash_value:
+                    useful_trash_exists = True
+                    break
 
             # --- Policy Selection ---
-            if env.agent_value == 5:
-                action_table = policy_dictionary['5']
-
-            elif env.agent_value == 10:
-                action_table = policy_dictionary['10']
-
-            elif env.agent_value == 20:
-                action_table = policy_dictionary['20']
-
-            elif env.agent_value == 30:
-                action_table = policy_dictionary['30']
-
+            if useful_trash_exists:
+                if agent_current_power < 10:
+                    action_table = policy_dictionary['5']
+                    print("im using 5 policy")
+                elif agent_current_power < 20:
+                    action_table = policy_dictionary['10']
+                    print("im using 10 policy")
+                elif agent_current_power < 30:
+                    action_table = policy_dictionary['20']
+                    print("im using 20 policy")
+                elif agent_current_power < 40:
+                    action_table = policy_dictionary['30']
+                    print("im using 30 policy")
+                else:
+                    action_table = policy_dictionary['40']
+                    print("im using 40 policy")
             else:
-                action_table = policy_dictionary['40']
-
-            # ------------------------
+                action_table = policy_dictionary['goal']
+                print("im using goal policy")
 
             moves += 1
             r, c = state
