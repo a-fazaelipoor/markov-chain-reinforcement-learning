@@ -10,108 +10,53 @@ from environment import WallE, PygameInit
 
 
 
-def up_down_calc(move , value , move_prob , neigh_prob , grid_size , r , c , v_table , gamma):
+
+def get_term(target_r, target_c, current_r, current_c, grid_size, grid, value, v_table, gamma):
+
+    if 0 <= target_r < grid_size and 0 <= target_c < grid_size:
+        if grid[target_r][target_c][0] != 'B':
+            return value[target_r][target_c] + gamma * v_table[target_r][target_c]
+        else :
+            return -1 + gamma * v_table[current_r][current_c]
+
+    return -1 + gamma * v_table[current_r][current_c]
+
+
+def up_down_calc(move, value, move_prob, neigh_prob, grid_size, r, c, v_table, gamma, grid):
+    term_intended = 0
+    term_neigh1 = 0
+    term_neigh2 = 0
+
     if move == "up":
-        if r - 1 >= 0:
-            if c - 1 >= 0 and c + 1 <= grid_size - 1:
-                val = -1 + move_prob * (value[r - 1][c] + gamma * v_table[r-1][c]) + neigh_prob * (value[r][c - 1] + gamma * v_table[r][c-1]) + neigh_prob * (value[r][c + 1] + gamma * v_table[r][c+1])
+        term_intended = get_term(r - 1, c, r, c, grid_size, grid, value, v_table, gamma)
+        term_neigh1 = get_term(r, c - 1, r, c, grid_size, grid, value, v_table, gamma)
+        term_neigh2 = get_term(r, c + 1, r, c, grid_size, grid, value, v_table, gamma)
 
-            elif c - 1 >= 0 and c + 1 > grid_size - 1:
-                val = -1 + move_prob * (value[r - 1][c] + gamma * v_table[r-1][c])  + neigh_prob * (value[r][c - 1] + gamma * v_table[r][c-1])
+    elif move == "down":
+        term_intended = get_term(r + 1, c, r, c, grid_size, grid, value, v_table, gamma)
+        term_neigh1 = get_term(r, c - 1, r, c, grid_size, grid, value, v_table, gamma)
+        term_neigh2 = get_term(r, c + 1, r, c, grid_size, grid, value, v_table, gamma)
 
-            elif c - 1 < 0 and c + 1 <= grid_size - 1:
-                val = -1 + move_prob * (value[r - 1][c] + gamma * v_table[r-1][c]) + neigh_prob * (value[r][c + 1] + gamma * v_table[r][c+1])
-
-            else:
-                val = -1 + move_prob * (value[r - 1][c] + gamma * v_table[r-1][c])
-
-        else:
-            if c - 1 >= 0 and c + 1 <= grid_size - 1:
-                val = -1 + neigh_prob * (value[r][c - 1] + gamma * v_table[r][c-1]) + neigh_prob * (value[r][c + 1] + gamma * v_table[r][c+1])
-
-            elif c - 1 >= 0 and c + 1 > grid_size - 1:
-                val = -1 + neigh_prob * (value[r][c - 1] + gamma * v_table[r][c-1])
-
-            elif c - 1 < 0 and c + 1 <= grid_size - 1:
-                val = -1 + neigh_prob * (value[r][c + 1] + gamma * v_table[r][c+1])
-
-    if move == "down":
-        if r + 1 <= grid_size - 1:
-            if c - 1 >= 0 and c + 1 <= grid_size - 1:
-                val = -1 + move_prob * (value[r + 1][c] + gamma * v_table[r+1][c]) + neigh_prob * (value[r][c - 1] + gamma * v_table[r][c-1]) + neigh_prob * (value[r][c + 1] + gamma * v_table[r][c+1])
-
-            elif c - 1 >= 0 and c + 1 > grid_size - 1:
-                val = -1 + move_prob * (value[r + 1][c] + gamma * v_table[r+1][c]) + neigh_prob * (value[r][c - 1] + gamma * v_table[r][c-1])
-
-            elif c - 1 < 0 and c + 1 <= grid_size - 1:
-                val = -1 + move_prob * (value[r + 1][c] + gamma * v_table[r+1][c]) + neigh_prob * (value[r][c + 1] + gamma * v_table[r][c+1])
-
-            else:
-                val = -1 + move_prob * (value[r + 1][c] + gamma * v_table[r+1][c])
-
-        else:
-            if c - 1 >= 0 and c + 1 <= grid_size - 1:
-                val = -1 + neigh_prob * (value[r][c - 1] + gamma * v_table[r][c-1]) + neigh_prob * (value[r][c + 1] + gamma * v_table[r][c+1])
-
-            elif c - 1 >= 0 and c + 1 > grid_size - 1:
-                val = -1 + neigh_prob * (value[r][c - 1] + gamma * v_table[r][c-1])
-
-            elif c - 1 < 0 and c + 1 <= grid_size - 1:
-                val = -1 + neigh_prob * (value[r][c + 1] + gamma * v_table[r][c+1])
-
+    val = (move_prob * term_intended) + (neigh_prob * term_neigh1) + (neigh_prob * term_neigh2)
     return val
 
 
-def left_right_calc(move , value , move_prob , neigh_prob , grid_size , r , c , v_table , gamma):
+def left_right_calc(move, value, move_prob, neigh_prob, grid_size, r, c, v_table, gamma, grid):
+    term_intended = 0
+    term_neigh1 = 0
+    term_neigh2 = 0
 
     if move == "left":
-        if c - 1 >= 0:
-            if r - 1 >= 0 and r + 1 <= grid_size - 1:
-                val = -1 + move_prob * (value[r][c - 1] + gamma * v_table[r][c - 1]) + neigh_prob * (value[r - 1][c] + gamma * v_table[r - 1][c]) + neigh_prob * (value[r + 1][c] + gamma * v_table[r + 1][c])
+        term_intended = get_term(r, c - 1, r, c, grid_size, grid, value, v_table, gamma)
+        term_neigh1 = get_term(r - 1, c, r, c, grid_size, grid, value, v_table, gamma)
+        term_neigh2 = get_term(r + 1, c, r, c, grid_size, grid, value, v_table, gamma)
 
-            elif r - 1 >= 0 and r + 1 > grid_size - 1:
-                val = -1 + move_prob * (value[r][c - 1] + gamma * v_table[r][c - 1]) + neigh_prob * (value[r - 1][c] + gamma * v_table[r - 1][c])
+    elif move == "right":
+        term_intended = get_term(r, c + 1, r, c, grid_size, grid, value, v_table, gamma)
+        term_neigh1 = get_term(r - 1, c, r, c, grid_size, grid, value, v_table, gamma)
+        term_neigh2 = get_term(r + 1, c, r, c, grid_size, grid, value, v_table, gamma)
 
-            elif r - 1 < 0 and r + 1 <= grid_size - 1:
-                val = -1 + move_prob * (value[r][c - 1] + gamma * v_table[r][c - 1]) + neigh_prob * (value[r + 1][c] + gamma * v_table[r + 1][c])
-
-            else:
-                val = -1 + move_prob * (value[r][c - 1] + gamma * v_table[r][c - 1])
-
-        else:
-            if r - 1 >= 0 and r + 1 <= grid_size - 1:
-                val = -1 + neigh_prob * (value[r - 1][c] + gamma * v_table[r - 1][c]) + neigh_prob * (value[r + 1][c] + gamma * v_table[r + 1][c])
-
-            elif r - 1 >= 0 and r + 1 > grid_size - 1:
-                val = -1 + neigh_prob * (value[r - 1][c] + gamma * v_table[r - 1][c])
-
-            elif r - 1 < 0 and r + 1 <= grid_size - 1:
-                val = -1 + neigh_prob * (value[r + 1][c] + gamma * v_table[r + 1][c])
-
-    if move == "right":
-        if c + 1 <= grid_size - 1:
-            if r - 1 >= 0 and r + 1 <= grid_size - 1:
-                val = -1 + move_prob * (value[r][c + 1] + gamma * v_table[r][c + 1]) + neigh_prob * (value[r - 1][c] + gamma * v_table[r - 1][c]) + neigh_prob * (value[r + 1][c] + gamma * v_table[r + 1][c])
-
-            elif r - 1 >= 0 and r + 1 > grid_size - 1:
-                val = -1 + move_prob * (value[r][c + 1] + gamma * v_table[r][c + 1]) + neigh_prob * (value[r - 1][c] + gamma * v_table[r - 1][c])
-
-            elif r - 1 < 0 and r + 1 <= grid_size - 1:
-                val = -1 + move_prob * (value[r][c + 1] + gamma * v_table[r][c + 1]) + neigh_prob * (value[r + 1][c] + gamma * v_table[r + 1][c])
-
-            else:
-                val = -1 + move_prob * (value[r][c + 1] + gamma * v_table[r][c + 1])
-
-        else:
-            if r - 1 >= 0 and r + 1 <= grid_size - 1:
-                val = -1 + neigh_prob * (value[r - 1][c] + gamma * v_table[r - 1][c]) + neigh_prob * (value[r + 1][c] + gamma * v_table[r + 1][c])
-
-            elif r - 1 >= 0 and r + 1 > grid_size - 1:
-                val = -1 + neigh_prob * (value[r - 1][c] + gamma * v_table[r - 1][c])
-
-            elif r - 1 < 0 and r + 1 <= grid_size - 1:
-                val = -1 + neigh_prob * (value[r + 1][c] + gamma * v_table[r + 1][c])
-
+    val = (move_prob * term_intended) + (neigh_prob * term_neigh1) + (neigh_prob * term_neigh2)
     return val
 
 
@@ -120,7 +65,7 @@ def left_right_calc(move , value , move_prob , neigh_prob , grid_size , r , c , 
 # -------------------------------- #
 class MySolver(WallE):
     def actions_model(self, reward_map):
-        gamma = 0.9
+        gamma = 0.99
         policy_dictionary = {}
         transition = self._WallE__probability_dict
         for key, value in reward_map.items():
@@ -131,14 +76,19 @@ class MySolver(WallE):
                 for c in range(grid_size):
                     v_table[r][c] = 0
 
-            max_iteration = 500
-            epsilon = 1e-4
+            max_iteration = 5000
+            epsilon = 1e-10
 
             for iteration in range(max_iteration):
                 v_new = [[0 for _ in range(grid_size)] for _ in range(grid_size)]
                 delta = 0
                 for r in range(grid_size):
                     for c in range(grid_size):
+                        if self._WallE__base_grid[r][c][0] == 'B':
+                            v_new[r][c] = 0
+                            policy[r][c] = -1  # اکشنی وجود ندارد
+                            continue
+
                         p =transition[(r,c)]
 
                         up = p[0]
@@ -146,31 +96,22 @@ class MySolver(WallE):
                         left = p[2]
                         right = p[3]
 
-                        up_val = up_down_calc("up" , value , up["intended"] , up["neighbor"] , grid_size, r, c ,v_table , gamma)
-                        down_val = up_down_calc("down" , value , down["intended"],  down["neighbor"] , grid_size, r, c , v_table , gamma)
-                        left_val = left_right_calc("left" , value ,left["intended"], left["neighbor"] , grid_size, r, c , v_table , gamma)
-                        right_val = left_right_calc("right" , value , right["intended"] , right["neighbor"] , grid_size, r, c , v_table , gamma)
+                        up_val = up_down_calc("up" , value , up["intended"] , up["neighbor"] , grid_size, r, c ,v_table , gamma , self._WallE__base_grid)
+                        down_val = up_down_calc("down" , value , down["intended"],  down["neighbor"] , grid_size, r, c , v_table , gamma , self._WallE__base_grid)
+                        left_val = left_right_calc("left" , value ,left["intended"], left["neighbor"] , grid_size, r, c , v_table , gamma , self._WallE__base_grid)
+                        right_val = left_right_calc("right" , value , right["intended"] , right["neighbor"] , grid_size, r, c , v_table , gamma , self._WallE__base_grid)
 
-                        if max(up_val , down_val , left_val , right_val) == up_val :
-                            v_new[r][c] = up_val
-                            policy[r][c] = 0
+                        vals = [up_val, down_val, left_val, right_val]
+                        best_action = int(np.argmax(vals))  # 0: up, 1: down, 2: left, 3: right
 
-                        if max(up_val , down_val , left_val , right_val) == left_val :
-                            v_new[r][c] = left_val
-                            policy[r][c] = 2
-
-                        if max(up_val , down_val , left_val , right_val) == down_val :
-                            v_new[r][c] = down_val
-                            policy[r][c] = 1
-
-                        if max(up_val , down_val , left_val , right_val) == right_val :
-                            v_new[r][c] = right_val
-                            policy[r][c] = 3
+                        v_new[r][c] = vals[best_action]
+                        policy[r][c] = best_action
 
                         delta = max(delta, abs(v_new[r][c] - v_table[r][c]))
 
                 v_table = v_new
                 if delta < epsilon:
+                    print(iteration)
                     break
 
             policy_dictionary[key] = policy
@@ -192,8 +133,15 @@ def build_reward_map(env):
             tile, val = env.grid[r][c]
             if tile == 'F':
                 reward_map[r][c] = +1000
+            elif tile == "E":
+                reward_map[r][c] = -500
+            elif tile == "S":
+                reward_map[r][c] = -1
+            elif tile == "B":
+                reward_map[r][c] = -100
             else:
-                reward_map[r][c] = 0
+                reward_map[r][c] = -1
+
     return reward_map
 
 
@@ -213,16 +161,22 @@ def build_all_reward_map(thresholds, env):
             for c in range(env._WallE__grid_size):
                 tile, val = env.grid[r][c]
                 if tile == "F":
-                    reward_map[r][c] = 400
+                    if lim < 35:
+                        reward_map[r][c] = -100
+                    else:
+                        reward_map[r][c] = 1000
                 elif tile == "E":
-                    reward_map[r][c] = -400
+                    reward_map[r][c] = -1000
+                elif tile == "B":
+                    reward_map[r][c] = -100
                 elif tile == "S":
                     if lim < val:
-                        reward_map[r][c] = (lim * 250) // val
+                        reward_map[r][c] = -10
                     else:
-                        reward_map[r][c] = 250
+                        reward_map[r][c] = 1200
+
                 else:
-                    reward_map[r][c] = 0
+                    reward_map[r][c] = -1
         reward_map_dic[str(lim)] = reward_map
     return reward_map_dic
 
@@ -308,26 +262,25 @@ if __name__ == "__main__":
                     useful_trash_exists = True
                     break
 
-            # --- Policy Selection ---
-            if useful_trash_exists:
-                if agent_current_power < 10:
-                    action_table = policy_dictionary['5']
-                    print("im using 5 policy")
-                elif agent_current_power < 20:
-                    action_table = policy_dictionary['10']
-                    print("im using 10 policy")
-                elif agent_current_power < 30:
-                    action_table = policy_dictionary['20']
-                    print("im using 20 policy")
-                elif agent_current_power < 40:
-                    action_table = policy_dictionary['30']
-                    print("im using 30 policy")
-                else:
-                    action_table = policy_dictionary['40']
-                    print("im using 40 policy")
+            if not useful_trash_exists or moves > MAX_MOVES_PER_EPISODE - 20:
+                action_table = policy_dictionary["goal"]
             else:
-                action_table = policy_dictionary['goal']
-                print("im using goal policy")
+                if  5<= env.agent_value < 10   :
+                    action_table = policy_dictionary["5"]
+                    policyy = 5
+                elif 10<= env.agent_value < 20 :
+                    action_table = policy_dictionary["10"]
+                    policyy = 10
+                elif 20<= env.agent_value < 30 :
+                    action_table = policy_dictionary["20"]
+                    policyy = 20
+                elif 30<= env.agent_value < 40 :
+                    action_table = policy_dictionary["30"]
+                    policyy = 30
+                else:
+                    action_table = policy_dictionary["40"]
+                    policyy = 40
+
 
             moves += 1
             r, c = state
