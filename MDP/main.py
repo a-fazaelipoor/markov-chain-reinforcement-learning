@@ -10,106 +10,107 @@ from environment import WallE, PygameInit
 
 
 
-def up_down_calc(move , value , move_prob , neigh_prob , grid_size , r , c):
+def up_down_calc(move , value , move_prob , neigh_prob , grid_size , r , c , v_table , gamma):
     if move == "up":
         if r - 1 >= 0:
             if c - 1 >= 0 and c + 1 <= grid_size - 1:
-                val = -1 + move_prob * value[r - 1][c] + neigh_prob * value[r][c - 1] + neigh_prob * value[r][c + 1]
+                val = -1 + move_prob * (value[r - 1][c] + gamma * v_table[r-1][c]) + neigh_prob * (value[r][c - 1] + gamma * v_table[r][c-1]) + neigh_prob * (value[r][c + 1] + gamma * v_table[r][c+1])
 
             elif c - 1 >= 0 and c + 1 > grid_size - 1:
-                val = -1 + move_prob * value[r - 1][c] + neigh_prob * value[r][c - 1]
+                val = -1 + move_prob * (value[r - 1][c] + gamma * v_table[r-1][c])  + neigh_prob * (value[r][c - 1] + gamma * v_table[r][c-1])
 
             elif c - 1 < 0 and c + 1 <= grid_size - 1:
-                val = -1 + move_prob * value[r - 1][c] + neigh_prob * value[r][c + 1]
+                val = -1 + move_prob * (value[r - 1][c] + gamma * v_table[r-1][c]) + neigh_prob * (value[r][c + 1] + gamma * v_table[r][c+1])
 
             else:
-                val = -1 + move_prob * value[r - 1][c]
+                val = -1 + move_prob * (value[r - 1][c] + gamma * v_table[r-1][c])
 
         else:
             if c - 1 >= 0 and c + 1 <= grid_size - 1:
-                val = -1 + neigh_prob * value[r][c - 1] + neigh_prob * value[r][c + 1]
+                val = -1 + neigh_prob * (value[r][c - 1] + gamma * v_table[r][c-1]) + neigh_prob * (value[r][c + 1] + gamma * v_table[r][c+1])
 
             elif c - 1 >= 0 and c + 1 > grid_size - 1:
-                val = -1 + neigh_prob * value[r][c - 1]
+                val = -1 + neigh_prob * (value[r][c - 1] + gamma * v_table[r][c-1])
 
             elif c - 1 < 0 and c + 1 <= grid_size - 1:
-                val = -1 + neigh_prob * value[r][c + 1]
+                val = -1 + neigh_prob * (value[r][c + 1] + gamma * v_table[r][c+1])
 
     if move == "down":
         if r + 1 <= grid_size - 1:
             if c - 1 >= 0 and c + 1 <= grid_size - 1:
-                val = -1 + move_prob * value[r + 1][c] + neigh_prob * value[r][c - 1] + neigh_prob * value[r][c + 1]
+                val = -1 + move_prob * (value[r + 1][c] + gamma * v_table[r+1][c]) + neigh_prob * (value[r][c - 1] + gamma * v_table[r][c-1]) + neigh_prob * (value[r][c + 1] + gamma * v_table[r][c+1])
 
             elif c - 1 >= 0 and c + 1 > grid_size - 1:
-                val = -1 + move_prob * value[r + 1][c] + neigh_prob * value[r][c - 1]
+                val = -1 + move_prob * (value[r + 1][c] + gamma * v_table[r+1][c]) + neigh_prob * (value[r][c - 1] + gamma * v_table[r][c-1])
 
             elif c - 1 < 0 and c + 1 <= grid_size - 1:
-                val = -1 + move_prob * value[r + 1][c] + neigh_prob * value[r][c + 1]
+                val = -1 + move_prob * (value[r + 1][c] + gamma * v_table[r+1][c]) + neigh_prob * (value[r][c + 1] + gamma * v_table[r][c+1])
 
             else:
-                val = -1 + move_prob * value[r + 1][c]
+                val = -1 + move_prob * (value[r + 1][c] + gamma * v_table[r+1][c])
 
         else:
             if c - 1 >= 0 and c + 1 <= grid_size - 1:
-                val = -1 + neigh_prob * value[r][c - 1] + neigh_prob * value[r][c + 1]
+                val = -1 + neigh_prob * (value[r][c - 1] + gamma * v_table[r][c-1]) + neigh_prob * (value[r][c + 1] + gamma * v_table[r][c+1])
 
             elif c - 1 >= 0 and c + 1 > grid_size - 1:
-                val = -1 + neigh_prob * value[r][c - 1]
+                val = -1 + neigh_prob * (value[r][c - 1] + gamma * v_table[r][c-1])
 
             elif c - 1 < 0 and c + 1 <= grid_size - 1:
-                val = -1 + neigh_prob * value[r][c + 1]
+                val = -1 + neigh_prob * (value[r][c + 1] + gamma * v_table[r][c+1])
 
     return val
 
 
-def left_right_calc(move , value , move_prob , neigh_prob , grid_size , r , c):
+def left_right_calc(move , value , move_prob , neigh_prob , grid_size , r , c , v_table , gamma):
+
     if move == "left":
         if c - 1 >= 0:
             if r - 1 >= 0 and r + 1 <= grid_size - 1:
-                val = -1 + move_prob * value[r][c - 1] + neigh_prob * value[r - 1][c] + neigh_prob * value[r + 1][c]
+                val = -1 + move_prob * (value[r][c - 1] + gamma * v_table[r][c - 1]) + neigh_prob * (value[r - 1][c] + gamma * v_table[r - 1][c]) + neigh_prob * (value[r + 1][c] + gamma * v_table[r + 1][c])
 
             elif r - 1 >= 0 and r + 1 > grid_size - 1:
-                val = -1 + move_prob * value[r][c - 1] + neigh_prob * value[r - 1][c]
+                val = -1 + move_prob * (value[r][c - 1] + gamma * v_table[r][c - 1]) + neigh_prob * (value[r - 1][c] + gamma * v_table[r - 1][c])
 
             elif r - 1 < 0 and r + 1 <= grid_size - 1:
-                val = -1 + move_prob * value[r][c - 1] + neigh_prob * value[r + 1][c]
+                val = -1 + move_prob * (value[r][c - 1] + gamma * v_table[r][c - 1]) + neigh_prob * (value[r + 1][c] + gamma * v_table[r + 1][c])
 
             else:
-                val = -1 + move_prob * value[r][c - 1]
+                val = -1 + move_prob * (value[r][c - 1] + gamma * v_table[r][c - 1])
 
         else:
             if r - 1 >= 0 and r + 1 <= grid_size - 1:
-                val = -1 + neigh_prob * value[r - 1][c] + neigh_prob * value[r + 1][c]
+                val = -1 + neigh_prob * (value[r - 1][c] + gamma * v_table[r - 1][c]) + neigh_prob * (value[r + 1][c] + gamma * v_table[r + 1][c])
 
             elif r - 1 >= 0 and r + 1 > grid_size - 1:
-                val = -1 + neigh_prob * value[r - 1][c]
+                val = -1 + neigh_prob * (value[r - 1][c] + gamma * v_table[r - 1][c])
 
             elif r - 1 < 0 and r + 1 <= grid_size - 1:
-                val = -1 + neigh_prob * value[r + 1][c]
+                val = -1 + neigh_prob * (value[r + 1][c] + gamma * v_table[r + 1][c])
 
     if move == "right":
         if c + 1 <= grid_size - 1:
             if r - 1 >= 0 and r + 1 <= grid_size - 1:
-                val = -1 + move_prob * value[r][c + 1] + neigh_prob * value[r - 1][c] + neigh_prob * value[r + 1][c]
+                val = -1 + move_prob * (value[r][c + 1] + gamma * v_table[r][c + 1]) + neigh_prob * (value[r - 1][c] + gamma * v_table[r - 1][c]) + neigh_prob * (value[r + 1][c] + gamma * v_table[r + 1][c])
 
             elif r - 1 >= 0 and r + 1 > grid_size - 1:
-                val = -1 + move_prob * value[r][c + 1] + neigh_prob * value[r - 1][c]
+                val = -1 + move_prob * (value[r][c + 1] + gamma * v_table[r][c + 1]) + neigh_prob * (value[r - 1][c] + gamma * v_table[r - 1][c])
 
             elif r - 1 < 0 and r + 1 <= grid_size - 1:
-                val = -1 + move_prob * value[r][c + 1] + neigh_prob * value[r + 1][c]
+                val = -1 + move_prob * (value[r][c + 1] + gamma * v_table[r][c + 1]) + neigh_prob * (value[r + 1][c] + gamma * v_table[r + 1][c])
 
             else:
-                val = -1 + move_prob * value[r][c + 1]
+                val = -1 + move_prob * (value[r][c + 1] + gamma * v_table[r][c + 1])
 
         else:
             if r - 1 >= 0 and r + 1 <= grid_size - 1:
-                val = -1 + neigh_prob * value[r - 1][c] + neigh_prob * value[r + 1][c]
+                val = -1 + neigh_prob * (value[r - 1][c] + gamma * v_table[r - 1][c]) + neigh_prob * (value[r + 1][c] + gamma * v_table[r + 1][c])
 
             elif r - 1 >= 0 and r + 1 > grid_size - 1:
-                val = -1 + neigh_prob * value[r - 1][c]
+                val = -1 + neigh_prob * (value[r - 1][c] + gamma * v_table[r - 1][c])
 
             elif r - 1 < 0 and r + 1 <= grid_size - 1:
-                val = -1 + neigh_prob * value[r + 1][c]
+                val = -1 + neigh_prob * (value[r + 1][c] + gamma * v_table[r + 1][c])
 
     return val
 
@@ -119,12 +120,13 @@ def left_right_calc(move , value , move_prob , neigh_prob , grid_size , r , c):
 # -------------------------------- #
 class MySolver(WallE):
     def actions_model(self, reward_map):
+        gamma = 0.9
         policy_dictionary = {}
         transition = self._WallE__probability_dict
         for key, value in reward_map.items():
             grid_size = self._WallE__grid_size
-            v_table = [[-1 for _ in range(grid_size)] for _ in range(grid_size)]
-            policy = [[" " for _ in range(grid_size)] for _ in range(grid_size)]
+            v_table = [[0 for _ in range(grid_size)] for _ in range(grid_size)]
+            policy = [[0 for _ in range(grid_size)] for _ in range(grid_size)]
             for r in range(grid_size):
                 for c in range(grid_size):
                     v_table[r][c] = 0
@@ -144,10 +146,10 @@ class MySolver(WallE):
                         left = p[2]
                         right = p[3]
 
-                        up_val = up_down_calc("up" , value , up["intended"] , up["neighbor"] , grid_size, r, c)
-                        down_val = up_down_calc("down" , value , down["intended"],  down["neighbor"] , grid_size, r, c)
-                        left_val = left_right_calc("left" , value ,left["intended"], left["neighbor"] , grid_size, r, c)
-                        right_val = left_right_calc("right" , value , right["intended"] , right["neighbor"] , grid_size, r, c)
+                        up_val = up_down_calc("up" , value , up["intended"] , up["neighbor"] , grid_size, r, c ,v_table , gamma)
+                        down_val = up_down_calc("down" , value , down["intended"],  down["neighbor"] , grid_size, r, c , v_table , gamma)
+                        left_val = left_right_calc("left" , value ,left["intended"], left["neighbor"] , grid_size, r, c , v_table , gamma)
+                        right_val = left_right_calc("right" , value , right["intended"] , right["neighbor"] , grid_size, r, c , v_table , gamma)
 
                         if max(up_val , down_val , left_val , right_val) == up_val :
                             v_new[r][c] = up_val
@@ -313,7 +315,7 @@ if __name__ == "__main__":
 
             moves += 1
             r, c = state
-  
+
             action = action_table[r][c]
 
             next_state, probability, reward_episode, done = env.step(action, THRESHOLDS)
