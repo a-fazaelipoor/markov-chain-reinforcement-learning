@@ -10,6 +10,37 @@ from environment import WallE, PygameInit
 
 
 
+def build_trash_reward_maps(env):
+    grid_size = env._WallE__grid_size
+    trash_positions = env.get_trash_points()
+    trash_reward_maps = {}
+
+    for (tr, tc) in trash_positions:
+        r_map = [[-1 for _ in range(grid_size)] for _ in range(grid_size)]
+
+        for r in range(grid_size):
+            for c in range(grid_size):
+                tile, val = env.grid[r][c]
+
+                if tile == 'B':
+                    r_map[r][c] = -100
+                elif tile == 'E':
+                    r_map[r][c] = -100000
+                elif tile == 'F':
+                    r_map[r][c] = 0
+                elif tile == 'S':
+                    if (r, c) == (tr, tc):
+                        r_map[r][c] = 5000
+                    else:
+                        r_map[r][c] = -2
+                else:
+                    r_map[r][c] = -1
+
+        trash_reward_maps[(tr, tc)] = r_map
+
+    return trash_reward_maps
+
+
 
 def get_term(target_r, target_c, current_r, current_c, grid_size, grid, value, v_table, gamma):
 
@@ -217,19 +248,16 @@ def build_all_reward_map(thresholds, env):
             for c in range(env._WallE__grid_size):
                 tile, val = env.grid[r][c]
                 if tile == "F":
-                    if lim < 70:
-                        reward_map[r][c] = -100
-                    else:
-                        reward_map[r][c] = 1000
+                    reward_map[r][c] = 500
                 elif tile == "E":
-                    reward_map[r][c] = -1200
+                    reward_map[r][c] = -5000
                 elif tile == "B":
                     reward_map[r][c] = -50
                 elif tile == "S":
                     if lim < val:
-                        reward_map[r][c] = -40 + val
+                        reward_map[r][c] = -5
                     else:
-                        reward_map[r][c] = 1200 + val
+                        reward_map[r][c] = 1000 + val
 
                 else:
                     reward_map[r][c] = -1
@@ -244,19 +272,16 @@ def dynamic_reward_bulder(env , agent_power ,reward_map_dic):
         for c in range(env._WallE__grid_size):
             tile, val = env.grid[r][c]
             if tile == "F":
-                if agent_power < 70:
-                    reward_map[r][c] = -100
-                else:
-                    reward_map[r][c] = 100
+                reward_map[r][c] = 500
             elif tile == "E":
-                reward_map[r][c] = -1200
+                reward_map[r][c] = -5000
             elif tile == "B":
-                reward_map[r][c] = -50
+                reward_map[r][c] = -100
             elif tile == "S":
                 if agent_power < val:
-                    reward_map[r][c] = -40 + val
+                    reward_map[r][c] = -5
                 else:
-                    reward_map[r][c] = 1200 + val
+                    reward_map[r][c] = 1000 + val
 
             else:
                 reward_map[r][c] = -1
