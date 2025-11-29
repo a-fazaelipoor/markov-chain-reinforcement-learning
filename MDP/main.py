@@ -219,11 +219,11 @@ def build_reward_map(env):
         for c in range(env._WallE__grid_size):
             tile, val = env.grid[r][c]
             if tile == 'F':
-                reward_map[r][c] = +1000
+                reward_map[r][c] = +10000
             elif tile == "E":
-                reward_map[r][c] = -1000
+                reward_map[r][c] = -10000
             elif tile == "S":
-                reward_map[r][c] = -1
+                reward_map[r][c] = -2
             elif tile == "B":
                 reward_map[r][c] = -100
             else:
@@ -232,37 +232,7 @@ def build_reward_map(env):
     return reward_map
 
 
-def build_all_reward_map(thresholds, env):
-    reward_map_dic = {
-        "5" : [],
-        "10" : [],
-        "20" : [],
-        "30" : [],
-        "40" : []
-    }
 
-    for lim in thresholds:
-        grid_size = env._WallE__grid_size
-        reward_map = [[-1 for _ in range(grid_size)] for _ in range(grid_size)]
-        for r in range(env._WallE__grid_size):
-            for c in range(env._WallE__grid_size):
-                tile, val = env.grid[r][c]
-                if tile == "F":
-                    reward_map[r][c] = 500
-                elif tile == "E":
-                    reward_map[r][c] = -5000
-                elif tile == "B":
-                    reward_map[r][c] = -50
-                elif tile == "S":
-                    if lim < val:
-                        reward_map[r][c] = -5
-                    else:
-                        reward_map[r][c] = 1000 + val
-
-                else:
-                    reward_map[r][c] = -1
-        reward_map_dic[str(lim)] = reward_map
-    return reward_map_dic
 
 
 def dynamic_reward_bulder(env , agent_power ,reward_map_dic):
@@ -314,7 +284,7 @@ if __name__ == "__main__":
     THRESHOLDS = [5, 10, 20, 30, 40]
     MAX_MOVES_PER_EPISODE = 100
 
-    reward_map_dic_without_goal_reward_map = build_all_reward_map(THRESHOLDS, env)
+    trash_reward_maps = build_trash_reward_maps(env)
 
 
 
@@ -330,12 +300,17 @@ if __name__ == "__main__":
     # v_tables_map = ...
 
     print("Building goal_table...")
-    reward_map = build_reward_map(env)
-    reward_map_dic_without_goal_reward_map["goal"] = reward_map
+    goal_reward_map = build_reward_map(env)
+    reward_map = {}
 
-    reward_map = reward_map_dic_without_goal_reward_map
+
+    reward_map.update(trash_reward_maps)
+
+    reward_map["goal"] = goal_reward_map
 
     policy_dictionary = env.actions_model(reward_map)
+
+
 
     print("Finished building goal_table.")
     print(policy_dictionary)
@@ -373,24 +348,26 @@ if __name__ == "__main__":
                     useful_trash_exists = True
                     break
 
-            if not useful_trash_exists or moves > MAX_MOVES_PER_EPISODE - 20:
-                action_table = policy_dictionary["goal"]
+            trash_positions = env.get_trash_points()
+            agent_power = env.agent_value
+
+            best_target = None
+            best_dist = 9999
+
+            for (tr, tc) in trash_positions:
+                tile, val = env.grid[tr][tc]
+
+                if agent_power >= val:
+                    dist = abs(tr - state[0]) + abs(tc - state[1]) 
+                    if dist < best_dist:
+                        best_dist = dist
+                        best_target = (tr, tc)
+
+            if best_target is not None:
+                action_table = policy_dictionary[best_target]
+
             else:
-                if  5<= env.agent_value < 10   :
-                    action_table = policy_dictionary["5"]
-                    policyy = 5
-                elif 10<= env.agent_value < 20 :
-                    action_table = policy_dictionary["10"]
-                    policyy = 10
-                elif 20<= env.agent_value < 30 :
-                    action_table = policy_dictionary["20"]
-                    policyy = 20
-                elif 30<= env.agent_value < 40 :
-                    action_table = policy_dictionary["30"]
-                    policyy = 30
-                else:
-                    action_table = policy_dictionary["40"]
-                    policyy = 40
+                action_table = policy_dictionary["goal"]
 
 
             moves += 1
@@ -402,10 +379,6 @@ if __name__ == "__main__":
             state = next_state
             current += reward_episode
 
-            if base_power != env.agent_value:
-                reward_map = dynamic_reward_bulder(env , env.agent_value ,reward_map)
-                policy_dictionary = env.dynamic_policy_builder( env , env.agent_value ,reward_map , policy_dictionary)
-                action_table = policy_dictionary[str(env.agent_value)]
 
             if done or moves > MAX_MOVES_PER_EPISODE:
                 moves = 0
