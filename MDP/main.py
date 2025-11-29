@@ -120,6 +120,62 @@ class MySolver(WallE):
 
 
 
+    def dynamic_policy_builder(self , env , agent_power ,reward_map_dic , policy_dictionary):
+        gamma = 0.99
+        transition = self._WallE__probability_dict
+        value = reward_map_dic[str(agent_power)]
+
+        grid_size = self._WallE__grid_size
+        v_table = [[0 for _ in range(grid_size)] for _ in range(grid_size)]
+        policy = [[0 for _ in range(grid_size)] for _ in range(grid_size)]
+        for r in range(grid_size):
+            for c in range(grid_size):
+                v_table[r][c] = 0
+
+        max_iteration = 5000
+        epsilon = 1e-10
+
+        for iteration in range(max_iteration):
+            v_new = [[0 for _ in range(grid_size)] for _ in range(grid_size)]
+            delta = 0
+            for r in range(grid_size):
+                for c in range(grid_size):
+                    if self._WallE__base_grid[r][c][0] == 'B':
+                        v_new[r][c] = 0
+                        policy[r][c] = -1  # اکشنی وجود ندارد
+                        continue
+
+                    p = transition[(r, c)]
+
+                    up = p[0]
+                    down = p[1]
+                    left = p[2]
+                    right = p[3]
+
+                    up_val = up_down_calc("up", value, up["intended"], up["neighbor"], grid_size, r, c, v_table,gamma, self._WallE__base_grid)
+                    down_val = up_down_calc("down", value, down["intended"], down["neighbor"], grid_size, r, c,v_table, gamma, self._WallE__base_grid)
+                    left_val = left_right_calc("left", value, left["intended"], left["neighbor"], grid_size, r, c,v_table, gamma, self._WallE__base_grid)
+                    right_val = left_right_calc("right", value, right["intended"], right["neighbor"], grid_size, r,c, v_table, gamma, self._WallE__base_grid)
+
+                    vals = [up_val, down_val, left_val, right_val]
+                    best_action = int(np.argmax(vals))  # 0: up, 1: down, 2: left, 3: right
+
+                    v_new[r][c] = vals[best_action]
+                    policy[r][c] = best_action
+
+                    delta = max(delta, abs(v_new[r][c] - v_table[r][c]))
+
+            v_table = v_new
+            if delta < epsilon:
+                print(iteration)
+                break
+
+        policy_dictionary[str(agent_power)] = policy
+
+        return policy_dictionary
+
+
+
 
 # -------------------------------- #
 #     Implement your code here     #
@@ -134,7 +190,7 @@ def build_reward_map(env):
             if tile == 'F':
                 reward_map[r][c] = +1000
             elif tile == "E":
-                reward_map[r][c] = -500
+                reward_map[r][c] = -1000
             elif tile == "S":
                 reward_map[r][c] = -1
             elif tile == "B":
@@ -161,24 +217,53 @@ def build_all_reward_map(thresholds, env):
             for c in range(env._WallE__grid_size):
                 tile, val = env.grid[r][c]
                 if tile == "F":
-                    if lim < 35:
+                    if lim < 70:
                         reward_map[r][c] = -100
                     else:
                         reward_map[r][c] = 1000
                 elif tile == "E":
-                    reward_map[r][c] = -1000
+                    reward_map[r][c] = -1200
                 elif tile == "B":
-                    reward_map[r][c] = -100
+                    reward_map[r][c] = -50
                 elif tile == "S":
                     if lim < val:
-                        reward_map[r][c] = -10
+                        reward_map[r][c] = -40 + val
                     else:
-                        reward_map[r][c] = 1200
+                        reward_map[r][c] = 1200 + val
 
                 else:
                     reward_map[r][c] = -1
         reward_map_dic[str(lim)] = reward_map
     return reward_map_dic
+
+
+def dynamic_reward_bulder(env , agent_power ,reward_map_dic):
+    grid_size = env._WallE__grid_size
+    reward_map = [[-1 for _ in range(grid_size)] for _ in range(grid_size)]
+    for r in range(env._WallE__grid_size):
+        for c in range(env._WallE__grid_size):
+            tile, val = env.grid[r][c]
+            if tile == "F":
+                if agent_power < 70:
+                    reward_map[r][c] = -100
+                else:
+                    reward_map[r][c] = 100
+            elif tile == "E":
+                reward_map[r][c] = -1200
+            elif tile == "B":
+                reward_map[r][c] = -50
+            elif tile == "S":
+                if agent_power < val:
+                    reward_map[r][c] = -40 + val
+                else:
+                    reward_map[r][c] = 1200 + val
+
+            else:
+                reward_map[r][c] = -1
+    reward_map_dic[str(agent_power)] = reward_map
+    return reward_map_dic
+
+
 
 # -------------------------------- #
 #     Implement your code here     #
@@ -243,6 +328,7 @@ if __name__ == "__main__":
 
         while running:
 
+            base_power = env.agent_value
 
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
@@ -290,6 +376,11 @@ if __name__ == "__main__":
             next_state, probability, reward_episode, done = env.step(action, THRESHOLDS)
             state = next_state
             current += reward_episode
+
+            if base_power != env.agent_value:
+                reward_map = dynamic_reward_bulder(env , env.agent_value ,reward_map)
+                policy_dictionary = env.dynamic_policy_builder( env , env.agent_value ,reward_map , policy_dictionary)
+                action_table = policy_dictionary[str(env.agent_value)]
 
             if done or moves > MAX_MOVES_PER_EPISODE:
                 moves = 0
