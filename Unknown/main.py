@@ -4,7 +4,7 @@ import random
 import matplotlib.pyplot as plt
 from environment import WallE_RL, PygameInit, ACTIONS
 
-TOTAL_EPISODES = 6_000
+TOTAL_EPISODES = 10_000
 MAX_STEPS = 200
 ALPHA = 0.1
 GAMMA = 0.99
@@ -16,8 +16,6 @@ EPSILON_DECAY_LINEAR = True # اگر False => exponential
 GRID_FALLBACK = 8
 N_POWER_BINS = 4
 N_TRASH = 6
-
-SAVE_Q_PATH = "Q_simple.npy"
 
 SEED = 1111123
 FPS_TEST = 6
@@ -47,7 +45,7 @@ def state_to_id(pos, power, trash_list, grid_w, n_trash, n_power_bins=N_POWER_BI
     mask = trash_to_mask(trash_list)
     return ((pos_idx * n_power_bins) + power_idx) * (2 ** n_trash) + mask
 
-# ------------------ main simple training ------------------
+# ------------------ main training ------------------
 def simple_train(env, episodes=TOTAL_EPISODES, max_steps=MAX_STEPS,
                  alpha=ALPHA, gamma=GAMMA,
                  eps_start=EPSILON_START, eps_end=EPSILON_END,
@@ -64,7 +62,6 @@ def simple_train(env, episodes=TOTAL_EPISODES, max_steps=MAX_STEPS,
 
     prev_q = None
     for ep in range(1, episodes + 1):
-        dif = 0
         pos, power = env.reset()
         trash = get_trash_list()
         s = state_to_id(pos, power, trash, grid_w, n_trash)
@@ -89,7 +86,6 @@ def simple_train(env, episodes=TOTAL_EPISODES, max_steps=MAX_STEPS,
 
             # Q update (classic)
             next_max = 0.0 if done else np.max(Q[s2])
-            past_q = Q[s,a]
             Q[s, a] += alpha * (reward + gamma * next_max - Q[s, a])
             s = s2
             total += reward
@@ -108,16 +104,9 @@ def simple_train(env, episodes=TOTAL_EPISODES, max_steps=MAX_STEPS,
             recent = np.mean(rewards[-100:]) if len(rewards) >= 1 else 0.0
             print(f"[Ep {ep}/{episodes}] eps={eps:.3f} total={total:.1f} recent100={recent:.1f}")
 
-    # save Q
-    try:
-        np.save(SAVE_Q_PATH, Q)
-        if VERBOSE: print("Saved Q to", SAVE_Q_PATH)
-    except Exception as e:
-        print("Save Q failed:", e)
-
     return Q, rewards, (grid_w, n_trash) , q_diffs
 
-# ------------------ simple visual test ------------------
+# ------------------  test ------------------
 def simple_test(env, Q, grid_w, n_trash, episodes=5, fps=FPS_TEST):
     screen, clock = PygameInit.initialization()
     results = []
@@ -172,7 +161,7 @@ def plot_value_diff(q_diff, window=200):
     plt.grid(alpha=0.3)
     plt.title("value_Difference")
     plt.show()
-def plot_policy_map(Q, grid_w, n_trash, power_bin=2, n_power_bins=N_POWER_BINS):
+def plot_policy_map(Q, grid_w, n_trash, power_bin=0, n_power_bins=N_POWER_BINS):
     trash = [False] * n_trash
 
     policy = np.zeros((grid_w, grid_w), dtype=np.int32)
