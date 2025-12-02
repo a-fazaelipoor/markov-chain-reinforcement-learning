@@ -5,8 +5,29 @@ import copy
 import pprint
 from collections import deque
 from mpmath.libmp import to_str
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 from environment import WallE, PygameInit
+
+def draw_convergence(conv_list):
+    plt.figure(figsize=(7,5))
+    plt.plot(conv_list)
+    plt.xlabel("Iteration")
+    plt.ylabel("Difference Value")
+    plt.title("Convergence Graph for Goal Policy")
+    plt.grid(True)
+    plt.show()
+
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+def draw_heatmap(V_goal):
+    plt.figure(figsize=(12,12))
+    sns.heatmap(V_goal, annot=True, cmap="coolwarm", fmt=".1f")
+    plt.title("Heat Map for Goal V-Table")
+    plt.show()
+
 
 
 def get_true_distance(env, start_pos, target_pos):
@@ -128,6 +149,7 @@ class MySolver(WallE):
         gamma = 0.99
         policy_dictionary = {}
         transition = self._WallE__probability_dict
+        self.convergence_data = {}
         for key, value in reward_map.items():
             grid_size = self._WallE__grid_size
             v_table = [[0 for _ in range(grid_size)] for _ in range(grid_size)]
@@ -138,6 +160,7 @@ class MySolver(WallE):
 
             max_iteration = 5000
             epsilon = 1e-10
+            diffs = []
 
             for iteration in range(max_iteration):
                 v_new = [[0 for _ in range(grid_size)] for _ in range(grid_size)]
@@ -169,14 +192,21 @@ class MySolver(WallE):
 
                         delta = max(delta, abs(v_new[r][c] - v_table[r][c]))
 
+                v_new_arr = np.array(v_new, dtype=float)
+                v_old_arr = np.array(v_table, dtype=float)
+                diff_value = np.sum(np.abs(v_new_arr - v_old_arr))
+                diffs.append(diff_value)
                 v_table = v_new
                 if delta < epsilon:
                     print(iteration)
                     break
 
+            self.convergence_data[key] = diffs
+            if key == "goal":
+                self.goal_v_table = np.array(v_table, dtype=float)
             policy_dictionary[key] = policy
 
-        return policy_dictionary
+        return policy_dictionary , self.convergence_data
 
 
 
@@ -262,7 +292,8 @@ if __name__ == "__main__":
 
     reward_map["goal"] = goal_reward_map
 
-    policy_dictionary = env.actions_model(reward_map)
+    policy_dictionary , convergence_data = env.actions_model(reward_map)
+    goal_convergence_data = convergence_data["goal"]
 
 
 
@@ -302,7 +333,8 @@ if __name__ == "__main__":
 
             f_r , f_c = flower_position
 
-            dis_to_flower = get_true_distance(env , state , (7 , 7))
+
+            dis_to_flower = get_true_distance(env , state , flower_position)
             moves_left = MAX_MOVES_PER_EPISODE - moves
             move_limit = 20
             if moves_left <= dis_to_flower + move_limit:
@@ -349,3 +381,5 @@ if __name__ == "__main__":
 
     print(f"Average score: {sum_of_all / 5}")
     pygame.quit()
+    draw_heatmap(env.goal_v_table)
+    draw_convergence(goal_convergence_data)
