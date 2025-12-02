@@ -48,9 +48,9 @@ def get_term(target_r, target_c, current_r, current_c, grid_size, grid, value, v
         if grid[target_r][target_c][0] != 'B':
             return value[target_r][target_c] + gamma * v_table[target_r][target_c]
         else :
-            return -1 + gamma * v_table[current_r][current_c]
+            return value[target_r][target_c] + gamma * v_table[current_r][current_c]
 
-    return -1 + gamma * v_table[current_r][current_c]
+    return -100 + gamma * v_table[current_r][current_c]
 
 
 def up_down_calc(move, value, move_prob, neigh_prob, grid_size, r, c, v_table, gamma, grid):
@@ -167,7 +167,7 @@ def build_reward_map(env):
             if tile == 'F':
                 reward_map[r][c] = +10000
             elif tile == "E":
-                reward_map[r][c] = -10000
+                reward_map[r][c] = -100000
             elif tile == "S":
                 reward_map[r][c] = -2
             elif tile == "B":
