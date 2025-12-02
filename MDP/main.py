@@ -154,8 +154,6 @@ class MySolver(WallE):
 
 
 
-
-
 # -------------------------------- #
 #     Implement your code here     #
 # -------------------------------- #
@@ -266,18 +264,11 @@ if __name__ == "__main__":
             env.render(screen)
             trash_positions = env.get_trash_points()
 
-            useful_trash_exists = False
+
             agent_current_power = env.agent_value
 
-            for (tr, tc) in trash_positions:
-                cell_data = env.grid[tr][tc]
-                trash_value = cell_data[1]
 
-                if agent_current_power >= trash_value:
-                    useful_trash_exists = True
-                    break
 
-            trash_positions = env.get_trash_points()
             agent_power = env.agent_value
 
             f_r , f_c = flower_position
