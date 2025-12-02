@@ -3,12 +3,41 @@ import pygame
 import random
 import copy
 import pprint
-
+from collections import deque
 from mpmath.libmp import to_str
 
 from environment import WallE, PygameInit
 
 
+def get_true_distance(env, start_pos, target_pos):
+    if start_pos == target_pos:
+        return 0
+
+    grid_size = len(env.grid)
+    visited = set()
+    queue = deque([(start_pos, 0)])  # (position, distance)
+    visited.add(start_pos)
+
+    while queue:
+        (curr_r, curr_c), dist = queue.popleft()
+
+        moves = [(-1, 0), (1, 0), (0, -1), (0, 1)]
+
+        for dr, dc in moves:
+            next_r, next_c = curr_r + dr, curr_c + dc
+
+            if 0 <= next_r < grid_size and 0 <= next_c < grid_size:
+                if (next_r, next_c) == target_pos:
+                    return dist + 1
+
+
+                cell_type = env.grid[next_r][next_c][0]
+
+                if cell_type not in ['B', 'E'] and (next_r, next_c) not in visited:
+                    visited.add((next_r, next_c))
+                    queue.append(((next_r, next_c), dist + 1))
+
+    return 9999
 
 def build_trash_reward_maps(env):
     grid_size = env._WallE__grid_size
@@ -273,7 +302,7 @@ if __name__ == "__main__":
 
             f_r , f_c = flower_position
 
-            dis_to_flower = abs(f_r - state[0]) + abs(f_c - state[1])
+            dis_to_flower = get_true_distance(env , state , (7 , 7))
             moves_left = MAX_MOVES_PER_EPISODE - moves
             move_limit = 20
             if moves_left <= dis_to_flower + move_limit:
@@ -286,7 +315,7 @@ if __name__ == "__main__":
                     tile, val = env.grid[tr][tc]
 
                     if agent_power >= val:
-                        dist = abs(tr - state[0]) + abs(tc - state[1])
+                        dist = get_true_distance(env , state , (tr , tc))
                         if dist < best_dist:
                             best_dist = dist
                             best_target = (tr, tc)
