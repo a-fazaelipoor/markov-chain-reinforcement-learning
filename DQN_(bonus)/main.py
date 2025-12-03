@@ -25,6 +25,26 @@ TEST_EPISODES = 5
 STATE_DIM = 6
 ACTION_DIM = 4
 
+# HELPER FUNCTIONS
+def state_to_vector(pos, power, trash_states):
+    """
+    Converts environment variables (position, power, trash status) into the 
+    normalized state vector (STATE_DIM=6) for the DQN.
+    """
+    x, y = pos
+    
+    # Normalize position for faster convergence
+    x_norm = x / 4.0 
+    y_norm = y / 4.0
+
+    # Normalize battery power
+    power_norm = min(power, 30) / 30.0
+    
+    # Trash states (to Boolean states)
+    trash_vec = np.array(trash_states, dtype=float)
+
+    return np.array([x_norm, y_norm, power_norm, trash_vec[0], trash_vec[1], trash_vec[2]], dtype=np.float32)
+
 
 if __name__ == "__main__":
 
@@ -32,20 +52,20 @@ if __name__ == "__main__":
     env = WallE_RL()
     screen, clock = PygameInit.initialization()
 
-    # --- Project Parameters ---
-    NUM_TEST_EPISODES = 5 # Used for the initial random test run
+    NUM_TEST_EPISODES = 5
 
     episode_rewards = []
 
     print(f"Starting test run for {NUM_TEST_EPISODES} episodes...")
 
-    # Main game loop (for 5 test episodes)
+    # Main game loop
     for episode in range(NUM_TEST_EPISODES):
 
-        state, agent_power = env.reset()
-        
-        # New: Get the full trash state for a complete observation 
+        state_pos, agent_power = env.reset()
         trash_state = env._WallE_RL__get_trash_state() 
+        
+        # New: Convert initial state to vector for eventual DQN use
+        state_vec = state_to_vector(state_pos, agent_power, trash_state)
 
         running = True
         total_reward = 0
@@ -63,11 +83,12 @@ if __name__ == "__main__":
             action = np.random.choice(ACTIONS)
 
             next_state_pos, reward, next_trash_state, done, next_agent_power = env.step(action)
+            
+            # New: Convert next state to vector
+            next_state_vec = state_to_vector(next_state_pos, next_agent_power, next_trash_state)
 
             # Update the current state and total reward
-            state = next_state_pos
-            agent_power = next_agent_power
-            trash_state = next_trash_state
+            state_vec = next_state_vec
             total_reward += reward
 
             if done:
