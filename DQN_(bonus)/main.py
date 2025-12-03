@@ -42,6 +42,9 @@ class DQN(nn.Module):
             # Output Layer (ACTION_DIM=4 -> Q-values for each action)
             nn.Linear(64, ACTION_DIM)
         )
+    def forward(self, x):
+        """Forward pass: takes state vector x and outputs Q-values."""
+        return self.fc(x)
 
 # REPLAY BUFFER CLASS
 class ReplayBuffer:
