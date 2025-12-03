@@ -195,5 +195,75 @@ if __name__ == "__main__":
         if event.type == pygame.QUIT:
             pygame.quit()
             exit()
+    print("Training finished!")
+    
+    # 1. PLOTTING RESULTS
+    # Plotting Loss over training steps
+    plt.figure(figsize=(10, 5))
+    plt.plot(losses)
+    plt.title("Loss over Training Steps")
+    plt.xlabel("Training Steps")
+    plt.ylabel("Huber Loss")
+    plt.grid(True)
+    plt.savefig("loss_plot.png")
+    print("Loss plot saved to loss_plot.png.")
+
+    # Plotting Average Rewards
+    # A simple moving average can better show learning trends
+    window = 50 
+    avg_rewards = np.convolve(episode_rewards, np.ones(window)/window, mode='valid')
+    
+    plt.figure(figsize=(10, 5))
+    plt.plot(avg_rewards)
+    plt.title(f"Average Reward over Episodes (Window={window})")
+    plt.xlabel("Episode Index")
+    plt.ylabel("Average Reward")
+    plt.grid(True)
+    plt.savefig("reward_plot.png")
+    print("Reward plot saved to reward_plot.png.")
+
+    # 2. FINAL TESTING
+    print("\nStarting final test run...")
+    test_rewards = []
+    
+    # Test Policy Net without exploration (epsilon = 0)
+    for ep in range(TEST_EPISODES):
+        state_pos, agent_power = env.reset()
+        trash_state = env._WallE_RL__get_trash_state()
+        state_vec = state_to_vector(state_pos, agent_power, trash_state)
+        done = False
+        total_reward = 0
+
+        while not done:
+            # Handle Pygame quit events during test rendering
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    exit()
+
+            env.render(screen)
+
+            # Action selection: Pure exploitation (argmax Q)
+            with torch.no_grad():
+                q_values = policy_net(torch.tensor(state_vec).unsqueeze(0))
+                action = q_values.argmax().item()
+
+            # Execute action
+            next_state_pos, reward, next_trash_state, done, next_agent_power = env.step(action)
+            next_state_vec = state_to_vector(next_state_pos, next_agent_power, next_trash_state)
+
+            state_vec = next_state_vec
+            total_reward += reward
+
+            pygame.display.flip()
+            # Slow down test run visualization (FPS=5)
+            clock.tick(5) 
+
+        test_rewards.append(total_reward)
+        print(f"Test Episode {ep+1}/{TEST_EPISODES} | Final Reward: {total_reward:.1f}")
+
+    mean_test_reward = np.mean(test_rewards)
+    print("-" * 40)
+    print(f"MEAN FINAL TEST REWARD: {mean_test_reward:.1f}")
     
     pygame.quit()
