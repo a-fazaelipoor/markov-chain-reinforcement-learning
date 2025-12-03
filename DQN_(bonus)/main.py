@@ -1,7 +1,30 @@
 import numpy as np
 import pygame
-import os
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from collections import deque
+import random
+import matplotlib.pyplot as plt
 from environment import WallE_RL, PygameInit, ACTIONS
+
+# =============================================================================
+# HYPERPARAMETERS
+# =============================================================================
+GAMMA = 0.99
+ALPHA = 0.001
+EPSILON_START = 1.0
+EPSILON_MIN = 0.01
+EPSILON_DECAY = 0.996
+BATCH_SIZE = 64
+REPLAY_MEMORY_SIZE = 50000
+TARGET_UPDATE = 500
+TRAIN_EPISODES = 2000
+TEST_EPISODES = 5
+
+STATE_DIM = 6
+ACTION_DIM = 4
+
 
 if __name__ == "__main__":
 
@@ -10,9 +33,7 @@ if __name__ == "__main__":
     screen, clock = PygameInit.initialization()
 
     # --- Project Parameters ---
-    # These parameters are part of the problem definition
-    MAX_ACTIONS_PER_EPISODE = 200
-    NUM_TEST_EPISODES = 5
+    NUM_TEST_EPISODES = 5 # Used for the initial random test run
 
     episode_rewards = []
 
@@ -21,10 +42,10 @@ if __name__ == "__main__":
     # Main game loop (for 5 test episodes)
     for episode in range(NUM_TEST_EPISODES):
 
-        # ------------------------------------------------------------------
-        # This section resets the environment for the start of each new episode
         state, agent_power = env.reset()
-        # ------------------------------------------------------------------
+        
+        # New: Get the full trash state for a complete observation 
+        trash_state = env._WallE_RL__get_trash_state() 
 
         running = True
         total_reward = 0
@@ -36,32 +57,19 @@ if __name__ == "__main__":
                     pygame.quit()
                     exit()
 
-            # Render the environment
             env.render(screen)
 
-            # -------------------------------- #
-            #     Implement your logic here    #
-            # -------------------------------- #
-            #
-            # Currently, this is a "Random Policy".
-            # You must replace this section with your Q-Learning logic.
-            # Your agent needs to select an 'action' based on the current 'state'.
+            # Random Policy (to be replaced by DQN logic)
             action = np.random.choice(ACTIONS)
 
-            # -------------------------------- #
-            #     Execute the action           #
-            # -------------------------------- #
-            #
-            # The env.step() function returns the information needed for learning.
-            # In this random template, we only need 3 of the 5 returned values.
-            #
-            next_state, reward, next_trash_state, done, next_agent_power = env.step(action)
+            next_state_pos, reward, next_trash_state, done, next_agent_power = env.step(action)
 
             # Update the current state and total reward
-            state = next_state
+            state = next_state_pos
+            agent_power = next_agent_power
+            trash_state = next_trash_state
             total_reward += reward
 
-            # Check if the episode is over
             if done:
                 print(f"Episode {episode + 1} finished with reward: {total_reward:.0f}")
                 episode_rewards.append(total_reward)
@@ -72,5 +80,5 @@ if __name__ == "__main__":
             clock.tick(FPS)
 
     print("-" * 30)
-    print(f"MEAN REWARD (Random Policy): {np.mean(episode_rewards)}")
+    print(f"MEAN REWARD (Random Policy): {np.mean(episode_rewards):.1f}")
     pygame.quit()
