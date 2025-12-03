@@ -25,6 +25,24 @@ TEST_EPISODES = 5
 STATE_DIM = 6
 ACTION_DIM = 4
 
+# DQN CLASS
+class DQN(nn.Module):
+    def __init__(self):
+        super(DQN, self).__init__()
+        # Define the Fully Connected layers sequence becuase environment is small 5*5
+        self.fc = nn.Sequential(
+            # Input Layer (STATE_DIM=6) to Hidden Layer 1 (64 neurons)
+            nn.Linear(STATE_DIM, 64), 
+            nn.ReLU(), 
+            
+            # Hidden Layer 2 (64 neurons)
+            nn.Linear(64, 64),
+            nn.ReLU(),
+            
+            # Output Layer (ACTION_DIM=4 -> Q-values for each action)
+            nn.Linear(64, ACTION_DIM)
+        )
+
 # HELPER FUNCTIONS
 def state_to_vector(pos, power, trash_states):
     """
