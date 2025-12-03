@@ -116,61 +116,84 @@ def state_to_vector(pos, power, trash_states):
 
     return np.array([x_norm, y_norm, power_norm, trash_vec[0], trash_vec[1], trash_vec[2]], dtype=np.float32)
 
-
 if __name__ == "__main__":
-
-    FPS = 2
+    
     env = WallE_RL()
     screen, clock = PygameInit.initialization()
+    
+    #DQN Initialization
+    policy_net = DQN()
+    target_net = DQN()
+    target_net.load_state_dict(policy_net.state_dict())
+    target_net.eval()
 
-    NUM_TEST_EPISODES = 5
+    optimizer = optim.Adam(policy_net.parameters(), lr=ALPHA)
+    # Using SmoothL1Loss (Huber Loss) for stability
+    loss_fn = nn.SmoothL1Loss() 
+    replay_buffer = ReplayBuffer(REPLAY_MEMORY_SIZE)
 
+    epsilon = EPSILON_START
+    global_step = 0
+    losses = []
     episode_rewards = []
+    print("Starting DQN training...")
 
-    print(f"Starting test run for {NUM_TEST_EPISODES} episodes...")
-
-    # Main game loop
-    for episode in range(NUM_TEST_EPISODES):
-
+    # TRAINING LOOP
+    for episode in range(TRAIN_EPISODES):
+        # Reset environment for new episode
         state_pos, agent_power = env.reset()
         trash_state = env._WallE_RL__get_trash_state() 
-        
-        # New: Convert initial state to vector for eventual DQN use
         state_vec = state_to_vector(state_pos, agent_power, trash_state)
-
-        running = True
+        
+        done = False
         total_reward = 0
+        current_loss = 0
 
-        while running:
+        while not done:            
+            # 1. Epsilon-Greedy Action Selection
+            if random.random() < epsilon:
+                action = np.random.choice(ACTIONS) # Explore
+            else:
+                with torch.no_grad():
+                    # Exploit: Choose action with max Q-Value
+                    q_values = policy_net(torch.tensor(state_vec).unsqueeze(0))
+                    action = q_values.argmax().item()
 
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    pygame.quit()
-                    exit()
-
-            env.render(screen)
-
-            # Random Policy (to be replaced by DQN logic)
-            action = np.random.choice(ACTIONS)
-
+            # 2. Execute action and get results
             next_state_pos, reward, next_trash_state, done, next_agent_power = env.step(action)
-            
-            # New: Convert next state to vector
             next_state_vec = state_to_vector(next_state_pos, next_agent_power, next_trash_state)
 
-            # Update the current state and total reward
+            # 3. Store transition in Replay Buffer
+            replay_buffer.push((state_vec, action, reward, next_state_vec, done))
+
+            # 4. Update state and counters
             state_vec = next_state_vec
             total_reward += reward
+            global_step += 1
 
-            if done:
-                print(f"Episode {episode + 1} finished with reward: {total_reward:.0f}")
-                episode_rewards.append(total_reward)
-                running = False
-                break
+            # 5. Perform optimization step (Learn)
+            loss = optimize_model(policy_net, target_net, optimizer, replay_buffer, loss_fn)
+            if loss > 0.0:
+                losses.append(loss)
+                current_loss = loss
 
-            pygame.display.flip()
-            clock.tick(FPS)
+            # 6. Update target network periodically
+            if global_step % TARGET_UPDATE == 0:
+                target_net.load_state_dict(policy_net.state_dict())
+        
+        # 7. Epsilon Decay
+        epsilon = max(EPSILON_MIN, epsilon * EPSILON_DECAY)
+        episode_rewards.append(total_reward)
 
-    print("-" * 30)
-    print(f"MEAN REWARD (Random Policy): {np.mean(episode_rewards):.1f}")
+        if (episode + 1) % 200 == 0:
+            avg_reward = np.mean(episode_rewards[-200:])
+            print(f"Episode {episode + 1}/{TRAIN_EPISODES} | Avg Reward: {avg_reward:.1f} | Epsilon: {epsilon:.3f} | Last Loss: {current_loss:.4f}")
+
+    print("Training finished!")
+    
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            pygame.quit()
+            exit()
+    
     pygame.quit()
