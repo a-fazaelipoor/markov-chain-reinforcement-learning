@@ -43,6 +43,24 @@ class DQN(nn.Module):
             nn.Linear(64, ACTION_DIM)
         )
 
+# REPLAY BUFFER CLASS
+class ReplayBuffer:
+    def __init__(self, capacity):
+        self.buffer = deque(maxlen=capacity)
+
+    def push(self, transition):
+        """Stores a new experience in the buffer"""
+        # transition: (state, action, reward, next_state, done)
+        self.buffer.append(transition)
+
+    def sample(self, batch_size):
+        """Randomly samples a batch of transitions for training"""
+        return random.sample(self.buffer, batch_size)
+
+    def __len__(self):
+        """Returns the current size of the buffer"""
+        return len(self.buffer)
+    
 # HELPER FUNCTIONS
 def state_to_vector(pos, power, trash_states):
     """
