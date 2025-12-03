@@ -61,6 +61,41 @@ class ReplayBuffer:
         """Returns the current size of the buffer"""
         return len(self.buffer)
     
+# OPTIMIZATION FUNCTION
+def optimize_model(policy_net, target_net, optimizer, replay_buffer, loss_fn):
+    if len(replay_buffer) < BATCH_SIZE:
+        return 0.0
+
+    batch = replay_buffer.sample(BATCH_SIZE)
+    states, actions, rewards, next_states, dones = zip(*batch)
+
+    # Convert to Tensors
+    states = torch.tensor(np.array(states))
+    actions = torch.tensor(actions).unsqueeze(1)
+    rewards = torch.tensor(rewards, dtype=torch.float32)
+    next_states = torch.tensor(np.array(next_states))
+    dones = torch.tensor(dones, dtype=torch.float32)
+
+    # 1. Compute Q(s_t, a_t) - Q values for actions taken by the agent
+    q_values = policy_net(states).gather(1, actions).squeeze(1)
+
+    # 2. Compute Target Q-values: r_{t+1} + gamma * max_a Q_target(s_{t+1}, a)
+    with torch.no_grad():
+        # Get max Q from the target network for the next state
+        next_q_values = target_net(next_states).max(1)[0]
+        # Calculate target Q-value (set to reward only if episode is done)
+        targets = rewards + GAMMA * next_q_values * (1 - dones)
+
+    # 3. Compute Loss (Huber Loss is used for stability)
+    loss = loss_fn(q_values, targets)
+    
+    # 4. Optimization
+    optimizer.zero_grad()
+    loss.backward()
+    optimizer.step()
+    
+    return loss.item()
+
 # HELPER FUNCTIONS
 def state_to_vector(pos, power, trash_states):
     """
