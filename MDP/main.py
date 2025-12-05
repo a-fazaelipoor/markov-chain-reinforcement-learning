@@ -2,7 +2,143 @@ import numpy as np
 import pygame
 import random
 import copy
+import pprint
+from collections import deque
+from mpmath.libmp import to_str
+import matplotlib.pyplot as plt
+import seaborn as sns
+
 from environment import WallE, PygameInit
+
+def draw_convergence(conv_list):
+    plt.figure(figsize=(7,5))
+    plt.plot(conv_list)
+    plt.xlabel("Iteration")
+    plt.ylabel("Difference Value")
+    plt.title("Convergence Graph for Goal Policy")
+    plt.grid(True)
+    plt.show()
+
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+def draw_heatmap(V_goal):
+    plt.figure(figsize=(12,12))
+    sns.heatmap(V_goal, annot=True, cmap="coolwarm", fmt=".1f")
+    plt.title("Heat Map for Goal V-Table")
+    plt.show()
+
+
+
+def get_true_distance(env, start_pos, target_pos):
+    if start_pos == target_pos:
+        return 0
+
+    grid_size = len(env.grid)
+    visited = set()
+    queue = deque([(start_pos, 0)])  # (position, distance)
+    visited.add(start_pos)
+
+    while queue:
+        (curr_r, curr_c), dist = queue.popleft()
+
+        moves = [(-1, 0), (1, 0), (0, -1), (0, 1)]
+
+        for dr, dc in moves:
+            next_r, next_c = curr_r + dr, curr_c + dc
+
+            if 0 <= next_r < grid_size and 0 <= next_c < grid_size:
+                if (next_r, next_c) == target_pos:
+                    return dist + 1
+
+
+                cell_type = env.grid[next_r][next_c][0]
+
+                if cell_type not in ['B', 'E'] and (next_r, next_c) not in visited:
+                    visited.add((next_r, next_c))
+                    queue.append(((next_r, next_c), dist + 1))
+
+    return 9999
+
+def build_trash_reward_maps(env):
+    grid_size = env._WallE__grid_size
+    trash_positions = env.get_trash_points()
+    trash_reward_maps = {}
+
+    for (tr, tc) in trash_positions:
+        r_map = [[-1 for _ in range(grid_size)] for _ in range(grid_size)]
+
+        for r in range(grid_size):
+            for c in range(grid_size):
+                tile, val = env.grid[r][c]
+
+                if tile == 'B':
+                    r_map[r][c] = -100
+                elif tile == 'E':
+                    r_map[r][c] = -100000
+                elif tile == 'F':
+                    r_map[r][c] = 0
+                elif tile == 'S':
+                    if (r, c) == (tr, tc):
+                        r_map[r][c] = 5000
+                    else:
+                        r_map[r][c] = -2
+                else:
+                    r_map[r][c] = -1
+
+        trash_reward_maps[(tr, tc)] = r_map
+
+    return trash_reward_maps
+
+
+
+def get_term(target_r, target_c, current_r, current_c, grid_size, grid, value, v_table, gamma):
+
+    if 0 <= target_r < grid_size and 0 <= target_c < grid_size:
+        if grid[target_r][target_c][0] != 'B':
+            return value[target_r][target_c] + gamma * v_table[target_r][target_c]
+        else :
+            return value[target_r][target_c] + gamma * v_table[current_r][current_c]
+
+    return -100 + gamma * v_table[current_r][current_c]
+
+
+def up_down_calc(move, value, move_prob, neigh_prob, grid_size, r, c, v_table, gamma, grid):
+    term_intended = 0
+    term_neigh1 = 0
+    term_neigh2 = 0
+
+    if move == "up":
+        term_intended = get_term(r - 1, c, r, c, grid_size, grid, value, v_table, gamma)
+        term_neigh1 = get_term(r, c - 1, r, c, grid_size, grid, value, v_table, gamma)
+        term_neigh2 = get_term(r, c + 1, r, c, grid_size, grid, value, v_table, gamma)
+
+    elif move == "down":
+        term_intended = get_term(r + 1, c, r, c, grid_size, grid, value, v_table, gamma)
+        term_neigh1 = get_term(r, c - 1, r, c, grid_size, grid, value, v_table, gamma)
+        term_neigh2 = get_term(r, c + 1, r, c, grid_size, grid, value, v_table, gamma)
+
+    val = (move_prob * term_intended) + (neigh_prob * term_neigh1) + (neigh_prob * term_neigh2)
+    return val
+
+
+def left_right_calc(move, value, move_prob, neigh_prob, grid_size, r, c, v_table, gamma, grid):
+    term_intended = 0
+    term_neigh1 = 0
+    term_neigh2 = 0
+
+    if move == "left":
+        term_intended = get_term(r, c - 1, r, c, grid_size, grid, value, v_table, gamma)
+        term_neigh1 = get_term(r - 1, c, r, c, grid_size, grid, value, v_table, gamma)
+        term_neigh2 = get_term(r + 1, c, r, c, grid_size, grid, value, v_table, gamma)
+
+    elif move == "right":
+        term_intended = get_term(r, c + 1, r, c, grid_size, grid, value, v_table, gamma)
+        term_neigh1 = get_term(r - 1, c, r, c, grid_size, grid, value, v_table, gamma)
+        term_neigh2 = get_term(r + 1, c, r, c, grid_size, grid, value, v_table, gamma)
+
+    val = (move_prob * term_intended) + (neigh_prob * term_neigh1) + (neigh_prob * term_neigh2)
+    return val
 
 
 # -------------------------------- #
@@ -10,25 +146,71 @@ from environment import WallE, PygameInit
 # -------------------------------- #
 class MySolver(WallE):
     def actions_model(self, reward_map):
-        """
-        Implement your MDP solver (e.g., Value Iteration) here.
-        This function receives a reward_map and must return an 8x8 policy table.
+        gamma = 0.99
+        policy_dictionary = {}
+        transition = self._WallE__probability_dict
+        self.convergence_data = {}
+        for key, value in reward_map.items():
+            grid_size = self._WallE__grid_size
+            v_table = [[0 for _ in range(grid_size)] for _ in range(grid_size)]
+            policy = [[0 for _ in range(grid_size)] for _ in range(grid_size)]
+            for r in range(grid_size):
+                for c in range(grid_size):
+                    v_table[r][c] = 0
 
-        HINT: Access private members from the WallE base class using their "mangled" names:
-              - self._WallE__grid_size
-              - self._WallE__probability_dict
-              - self._WallE__calculate_transition_model(...)
-        """
+            max_iteration = 5000
+            epsilon = 1e-10
+            diffs = []
 
-        # Placeholder (remove this):
-        grid_size = self._WallE__grid_size
-        actions_taken = np.full((grid_size, grid_size), -1, dtype=np.int8)
-        for x in range(grid_size):
-            for y in range(grid_size):
-                if self.grid[x][y][0] == 'B':
-                    continue
-                actions_taken[x, y] = random.choice([0, 1, 2, 3])
-        return actions_taken
+            for iteration in range(max_iteration):
+                v_new = [[0 for _ in range(grid_size)] for _ in range(grid_size)]
+                delta = 0
+                for r in range(grid_size):
+                    for c in range(grid_size):
+                        if self._WallE__base_grid[r][c][0] == 'B':
+                            v_new[r][c] = 0
+                            policy[r][c] = -1  # اکشنی وجود ندارد
+                            continue
+
+                        p =transition[(r,c)]
+
+                        up = p[0]
+                        down = p[1]
+                        left = p[2]
+                        right = p[3]
+
+                        up_val = up_down_calc("up" , value , up["intended"] , up["neighbor"] , grid_size, r, c ,v_table , gamma , self._WallE__base_grid)
+                        down_val = up_down_calc("down" , value , down["intended"],  down["neighbor"] , grid_size, r, c , v_table , gamma , self._WallE__base_grid)
+                        left_val = left_right_calc("left" , value ,left["intended"], left["neighbor"] , grid_size, r, c , v_table , gamma , self._WallE__base_grid)
+                        right_val = left_right_calc("right" , value , right["intended"] , right["neighbor"] , grid_size, r, c , v_table , gamma , self._WallE__base_grid)
+
+                        vals = [up_val, down_val, left_val, right_val]
+                        best_action = int(np.argmax(vals))  # 0: up, 1: down, 2: left, 3: right
+
+                        v_new[r][c] = vals[best_action]
+                        policy[r][c] = best_action
+
+                        delta = max(delta, abs(v_new[r][c] - v_table[r][c]))
+
+                v_new_arr = np.array(v_new, dtype=float)
+                v_old_arr = np.array(v_table, dtype=float)
+                diff_value = np.sum(np.abs(v_new_arr - v_old_arr))
+                diffs.append(diff_value)
+                v_table = v_new
+                if delta < epsilon:
+                    print(iteration)
+                    break
+
+            self.convergence_data[key] = diffs
+            if key == "goal":
+                self.goal_v_table = np.array(v_table, dtype=float)
+            policy_dictionary[key] = policy
+
+        return policy_dictionary , self.convergence_data
+
+
+
+
 
 
 # -------------------------------- #
@@ -36,20 +218,31 @@ class MySolver(WallE):
 # -------------------------------- #
 # This function is needed to build the 'goal_table'
 def build_reward_map(env):
-    """
-       Build and return the goal-oriented reward_map (used to create goal_table).
-       A very simple and basic implementation
-    """
     grid_size = env._WallE__grid_size
     reward_map = [[-1 for _ in range(grid_size)] for _ in range(grid_size)]
     for r in range(env._WallE__grid_size):
         for c in range(env._WallE__grid_size):
             tile, val = env.grid[r][c]
             if tile == 'F':
-                reward_map[r][c] = +1000
+                reward_map[r][c] = +10000
+            elif tile == "E":
+                reward_map[r][c] = -100000
+            elif tile == "S":
+                reward_map[r][c] = -2
+            elif tile == "B":
+                reward_map[r][c] = -100
             else:
                 reward_map[r][c] = -1
+
     return reward_map
+
+
+
+
+
+
+
+
 
 # -------------------------------- #
 #     Implement your code here     #
@@ -69,10 +262,16 @@ if __name__ == "__main__":
     env = MySolver()
     state = env.reset()
 
+
     # --- parameters for precomputed table scheme ---
     # don't change these in your final code
     THRESHOLDS = [5, 10, 20, 30, 40]
-    MAX_MOVES_PER_EPISODE = 100
+    MAX_MOVES_PER_EPISODE = 150
+
+    trash_reward_maps = build_trash_reward_maps(env)
+
+
+
 
     # collect trash positions (fixed ordering) and values from the base grid
     trash_positions = env.get_trash_points()
@@ -85,14 +284,27 @@ if __name__ == "__main__":
     # v_tables_map = ...
 
     print("Building goal_table...")
-    reward_map = build_reward_map(env)
-    goal_table = env.actions_model(reward_map)
-    print("Finished building goal_table.")
+    goal_reward_map = build_reward_map(env)
+    reward_map = {}
 
+
+    reward_map.update(trash_reward_maps)
+
+    reward_map["goal"] = goal_reward_map
+
+    policy_dictionary , convergence_data = env.actions_model(reward_map)
+    goal_convergence_data = convergence_data["goal"]
+
+
+
+    print("Finished building goal_table.")
+    print(policy_dictionary)
     # ---------------------------#
 
     screen, clock = PygameInit.initialization()
     sum_of_all = 0
+
+    flower_position = (7, 7)
 
     # game loop
     for episode in range(5):
@@ -103,26 +315,59 @@ if __name__ == "__main__":
 
         while running:
 
+            base_power = env.agent_value
+
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     running = False
 
             env.render(screen)
+            trash_positions = env.get_trash_points()
 
-            # --- Policy Selection ---
-            # This is a simple implementation that ALWAYS uses the goal_table.
-            # You MUST modify this section to implement the full logic
-            action_table = goal_table
-            # ------------------------
+
+            agent_current_power = env.agent_value
+
+
+
+            agent_power = env.agent_value
+
+            f_r , f_c = flower_position
+
+
+            dis_to_flower = get_true_distance(env , state , flower_position)
+            moves_left = MAX_MOVES_PER_EPISODE - moves
+            move_limit = 20
+            if moves_left <= dis_to_flower + move_limit:
+                action_table = policy_dictionary["goal"]
+            else:
+                best_target = None
+                best_dist = 9999
+
+                for (tr, tc) in trash_positions:
+                    tile, val = env.grid[tr][tc]
+
+                    if agent_power >= val:
+                        dist = get_true_distance(env , state , (tr , tc))
+                        if dist < best_dist:
+                            best_dist = dist
+                            best_target = (tr, tc)
+
+                if best_target is not None:
+                    action_table = policy_dictionary[best_target]
+
+                else:
+                    action_table = policy_dictionary["goal"]
+
 
             moves += 1
+            r, c = state
 
-            # Get action from the selected policy
-            action = action_table[state]
+            action = action_table[r][c]
 
             next_state, probability, reward_episode, done = env.step(action, THRESHOLDS)
             state = next_state
             current += reward_episode
+
 
             if done or moves > MAX_MOVES_PER_EPISODE:
                 moves = 0
@@ -136,3 +381,5 @@ if __name__ == "__main__":
 
     print(f"Average score: {sum_of_all / 5}")
     pygame.quit()
+    draw_heatmap(env.goal_v_table)
+    draw_convergence(goal_convergence_data)

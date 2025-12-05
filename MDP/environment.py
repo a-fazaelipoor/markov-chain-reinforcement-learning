@@ -382,6 +382,7 @@ class WallE:
             for y in range(self.__grid_size):
                 if self.grid[x][y][0] == 'B':
                     continue
+                print("im here")
                 actions_taken[x, y] = random.choice([0, 1, 2, 3])
         return actions_taken
 
